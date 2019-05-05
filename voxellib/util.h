@@ -1,9 +1,16 @@
 #ifndef VOXELS_UTIL_H
 #define VOXELS_UTIL_H
 
+#include <string>
+
 void log(const char *format, ...);
 
-// TODO use env var
-#define RES_PATH(file) ("voxellib/res/" file)
+/**
+ * Assumes res/ is in working dir or at env var VOXELS_PATH
+ *
+ * @param out
+ * @param relative_path
+ */
+void resolve_resource_path(std::string &out, const char *relative_path);
 
 #endif

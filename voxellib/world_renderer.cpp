@@ -18,7 +18,7 @@ int WorldRenderer::init(World *world) {
 
     // load shaders
     int ret;
-    if ((ret = load_program(&prog_, RES_PATH("shaders/world.glslv"), RES_PATH("shaders/world.glslf"))) != kErrorSuccess)
+    if ((ret = load_program(&prog_, "shaders/world.glslv", "shaders/world.glslf")) != kErrorSuccess)
         return ret;
 
 

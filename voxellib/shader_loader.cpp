@@ -11,6 +11,10 @@
 // TODO convert to c++
 
 static char *read_shader_source(const char *filename) {
+    std::string path;
+    resolve_resource_path(path, filename);
+    filename = path.c_str();
+
     FILE *f = fopen(filename, "r");
 
     if (!f) {

@@ -3,6 +3,7 @@
 
 
 #include "world.h"
+#include "world_renderer.h"
 
 #include <SFML/Graphics/RenderTarget.hpp>
 
@@ -14,6 +15,7 @@ public:
 
 private:
     World &world_;
+    WorldRenderer renderer_;
     sf::RenderTarget *target_ = nullptr;
 
     void tick(float dt);

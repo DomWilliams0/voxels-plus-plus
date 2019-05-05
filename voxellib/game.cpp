@@ -12,7 +12,12 @@ int Game::run() {
     settings.minorVersion = 3;
     sf::RenderWindow window(sf::VideoMode(800, 600), "OpenGL", sf::Style::Default, settings);
     window.setVerticalSyncEnabled(true);
-    target_ = &window;
+    target_ = &window; // TODO remove target_
+
+    // init renderer
+    int ret;
+    if ((ret = renderer_.init(&world_)) != kErrorSuccess)
+        return ret;
 
     // timestep
     sf::Clock clock;
@@ -66,11 +71,10 @@ int Game::run() {
 }
 
 void Game::tick(float dt) {
-    Log("ticking with dt %f\n", dt);
+    log("ticking with dt %f", dt);
 }
 
 void Game::render(double alpha) {
-    target_->clear();
-
-    Log("rendering with alpha %f\n", alpha);
+    log("rendering with alpha %f", alpha);
+    renderer_.render_world(alpha);
 }

@@ -1,15 +1,9 @@
 #ifndef VOXELS_UTIL_H
 #define VOXELS_UTIL_H
 
-#include <stdarg.h>
-#include <iostream>
+void log(const char *format, ...);
 
-void Log(const char* format, ...)
-{
-    va_list ap;
-    va_start(ap, format);
-    vfprintf(stdout, format, ap);
-    va_end(ap);
-}
+// TODO use env var
+#define RES_PATH(file) ("voxellib/res/" file)
 
 #endif

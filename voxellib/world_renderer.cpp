@@ -73,7 +73,7 @@ void WorldRenderer::render_world(const glm::mat4 &view, double alpha) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-    int vertex_count = 12;
+    int vertex_count = 36;
     glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
 }

@@ -3,7 +3,8 @@
 
 enum VoxelError {
     kErrorSuccess = 0,
-    kErrorGLEW,
+    kErrorGlew,
+    kErrorSdl,
     kErrorShaderLoad,
 };
 

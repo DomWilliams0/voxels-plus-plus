@@ -1,5 +1,4 @@
 #include <GL/glew.h>
-#include <SFML/OpenGL.h>
 #include "world_renderer.h"
 #include "util.h"
 #include "error.h"
@@ -19,7 +18,7 @@ int WorldRenderer::init(World *world) {
     GLenum ret_gl;
     if ((ret_gl = glewInit()) != GLEW_OK) {
         log("glewInit failed: %s", glewGetErrorString(ret_gl));
-        return kErrorGLEW;
+        return kErrorGlew;
     }
 
     // load shaders

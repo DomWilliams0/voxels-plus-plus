@@ -6,7 +6,7 @@
 #include "camera.h"
 #include "world_renderer.h"
 
-#include <SFML/Window.hpp>
+#include <SDL2/SDL.h>
 
 class Game {
 public:
@@ -17,21 +17,13 @@ public:
 private:
     World &world_;
     WorldRenderer renderer_;
-    sf::Window *window_ = nullptr;
+    SDL_Window *window_ = nullptr;
     Camera camera_;
     CameraState last_camera_state_;
-
-    bool mouse_grabbed_ = false;
-    sf::Vector2i original_mouse_pos_;
-    sf::Vector2i last_mouse_pos_;
 
     void tick(double dt);
 
     void render(double alpha);
-
-    void grab_cursor(bool grab);
-
-    void on_mouse_grab(int x, int y);
 };
 
 

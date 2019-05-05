@@ -1,4 +1,4 @@
-#include <SFML/Window/Keyboard.hpp>
+#include <SDL2/SDL.h>
 #include "glm/simd/matrix.h"
 #include "glm/gtx/compatibility.hpp"
 #include "camera.h"
@@ -16,24 +16,26 @@ Camera::Camera(glm::vec3 start_pos, glm::vec3 start_dir) : state_() {
     update_orientation();
 }
 
-void Camera::rotate(int screen_x, int screen_y) {
-    yaw_ += screen_x * kCameraTurnSpeed;
-    pitch_ = glm::clamp(pitch_ - (screen_y * kCameraTurnSpeed),
+void Camera::rotate(int dx, int dy) {
+    yaw_ += dx * kCameraTurnSpeed;
+    pitch_ = glm::clamp(pitch_ + (dy * kCameraTurnSpeed),
                         -glm::two_pi<double>(), glm::two_pi<double>());
 
     update_orientation();
 }
 
 CameraState Camera::tick(double dt) {
+    const Uint8 *state = SDL_GetKeyboardState(nullptr);
+
     int backwards = 0, right = 0;
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+    if (state[SDL_SCANCODE_W])
         backwards -= 1;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+    if (state[SDL_SCANCODE_S])
         backwards += 1;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+    if (state[SDL_SCANCODE_A])
         right -= 1;
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+    if (state[SDL_SCANCODE_D])
         right += 1;
 
     CameraState last_state = state_;
@@ -60,8 +62,8 @@ CameraState Camera::interpolate_from(const CameraState &from, double alpha) cons
 }
 
 void Camera::update_orientation() {
-    glm::quat pitch = glm::quat(pitch_, glm::vec3(1.f, 0.f, 0.f)); // x axis up
-    glm::quat yaw = glm::quat(yaw_, glm::vec3(0.f, 1.f, 0.f)); // y axis up
+    glm::quat pitch = glm::angleAxis((float) pitch_, glm::vec3(1.f, 0.f, 0.f)); // x axis up
+    glm::quat yaw = glm::angleAxis((float) yaw_, glm::vec3(0.f, 1.f, 0.f)); // y axis up
 
     glm::quat orientation = pitch * yaw;
     state_.rotation_ = glm::normalize(orientation);
@@ -69,7 +71,7 @@ void Camera::update_orientation() {
 
 void CameraState::update_transform() {
     glm::vec3 pos_inv = position_ * glm::vec3(-1, -1, -1);
-    glm::mat4 translation = glm::translate(glm::mat4(1.0), pos_inv); // TODO identity?
+    glm::mat4 translation = glm::translate(glm::mat4(1.0), pos_inv);
     glm::mat4 rotation = glm::mat4_cast(rotation_);
 
     transform_ = rotation * translation;

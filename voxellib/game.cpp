@@ -1,25 +1,33 @@
-#include <SFML/Audio.hpp>
-#include <SFML/Graphics.hpp>
-
 #include "game.h"
 #include "error.h"
 #include "util.h"
 #include "camera.h"
 
 int Game::run() {
-    // create window
-    sf::ContextSettings settings;
-    settings.majorVersion = 3;
-    settings.minorVersion = 3;
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        log("failed to init SDL: %s", SDL_GetError());
+        return kErrorSdl;
+    }
+
+    // window config
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     const int width = 800;
     const int height = 600;
     register_window_resize(width, height);
 
-    sf::Window window(sf::VideoMode(width, height), "OpenGL", sf::Style::Default, settings);
-    window.setVerticalSyncEnabled(true);
+    // create window
+    if ((window_ = SDL_CreateWindow("OpenGL",
+                                    SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                    width, height, SDL_WINDOW_OPENGL)) == nullptr) {
+        log("failed to create window: %s", SDL_GetError());
+        return kErrorSdl;
+    }
 
-    window_ = &window;
+    SDL_GLContext gl = SDL_GL_CreateContext(window_);
+    SDL_GL_MakeCurrent(window_, gl);
 
     // init renderer
     int ret;
@@ -33,43 +41,41 @@ int Game::run() {
 
 
     // timestep
-    sf::Clock clock;
     double t = 0;
     const int tps = 20;
     const double dt = 1.0 / tps;
-    double now_s = clock.getElapsedTime().asSeconds();
+    double now_s = ((float) SDL_GetTicks()) / 1000;
     double acc = 0;
 
-    sf::Event event{};
-    while (window.isOpen()) {
-        while (window.pollEvent(event)) {
+    SDL_Event event;
+    bool running = true;
+    while (running) {
+        while (SDL_PollEvent(&event)) {
             switch (event.type) {
-                case sf::Event::Closed:
-                    window.close();
+                case SDL_QUIT:
+                    running = false;
                     break;
 
-                case sf::Event::KeyReleased:
-                    if (event.key.code == sf::Keyboard::Key::Escape)
-                        window.close();
+                case SDL_KEYUP:
+                    if (event.key.keysym.sym == SDLK_ESCAPE) {
+                        running = false;
+                    }
                     break;
 
-                case sf::Event::Resized:
-                    register_window_resize(event.size.width, event.size.height);
+                case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                        register_window_resize(event.window.data1, event.window.data2);
                     break;
 
-                case sf::Event::MouseMoved:
-                    if (mouse_grabbed_)
-                        on_mouse_grab(event.mouseMove.x, event.mouseMove.y);
+                case SDL_MOUSEMOTION:
+                    if (event.motion.state & SDL_BUTTON_LMASK)
+                        camera_.rotate(event.motion.xrel, event.motion.yrel);
                     break;
 
-                case sf::Event::MouseButtonPressed:
-                    if (event.mouseButton.button == sf::Mouse::Button::Left)
-                        grab_cursor(true);
-                    break;
-
-                case sf::Event::MouseButtonReleased:
-                    if (event.mouseButton.button == sf::Mouse::Button::Left)
-                        grab_cursor(false);
+                case SDL_MOUSEBUTTONDOWN:
+                case SDL_MOUSEBUTTONUP:
+                    if (event.button.button == SDL_BUTTON_LEFT)
+                        SDL_SetRelativeMouseMode(event.button.state == SDL_PRESSED ? SDL_TRUE : SDL_FALSE);
                     break;
 
                 default:
@@ -78,7 +84,7 @@ int Game::run() {
         }
 
         // independent frame rate
-        double new_now_s = clock.getElapsedTime().asSeconds();
+        double new_now_s = ((float) SDL_GetTicks()) / 1000;
         double frame_time = new_now_s - now_s;
         if (frame_time > 0.25)
             frame_time = 0.25;
@@ -96,7 +102,7 @@ int Game::run() {
         const double alpha = acc / dt;
         render(alpha);
 
-        window.display();
+        SDL_GL_SwapWindow(window_);
     }
 
     return kErrorSuccess;
@@ -112,28 +118,5 @@ void Game::render(double alpha) {
 
     CameraState interpolated(camera_.interpolate_from(last_camera_state_, alpha));
     renderer_.render_world(interpolated.transform(), alpha);
-}
-
-void Game::grab_cursor(bool grab) {
-    // TODO use raw/relative mouse events in v2.6
-    window_->setMouseCursorVisible(!grab);
-    mouse_grabbed_ = grab;
-
-    if (grab)
-        original_mouse_pos_ = last_mouse_pos_ = sf::Mouse::getPosition(*window_);
-    else
-        sf::Mouse::setPosition(original_mouse_pos_, *window_);
-
-}
-
-void Game::on_mouse_grab(int x, int y) {
-    int dx = last_mouse_pos_.x - x;
-    int dy = last_mouse_pos_.y - y;
-
-    camera_.rotate(dx, dy);
-
-    auto new_pos = sf::Mouse::getPosition(*window_);
-    last_mouse_pos_.x = new_pos.x;
-    last_mouse_pos_.y = new_pos.y;
 }
 

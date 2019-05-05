@@ -6,7 +6,7 @@
 #include "glm/mat4x4.hpp"
 #include "glm/gtc/quaternion.hpp"
 
-const double kCameraTurnSpeed = 0.0001;
+const double kCameraTurnSpeed = 0.001;
 const float kCameraMoveSpeed = 10.0f;
 
 class CameraState {
@@ -44,7 +44,7 @@ public:
 
     Camera() : Camera(glm::vec3(0.f), glm::vec3(1.f, 0.f, 0.f)) {};
 
-    void rotate(int screen_x, int screen_y);
+    void rotate(int dx, int dy);
 
     /**
      * @return Copy of state before tick

@@ -3,9 +3,8 @@ project(voxellib)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Werror -fno-stack-protector")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
-find_package(SFML 2.5 COMPONENTS graphics REQUIRED)
-find_package(GLEW REQUIRED)
 
 set(SOURCES
         game.cpp
@@ -23,9 +22,12 @@ set(SOURCES
         camera.h
         )
 
+
+find_package(SDL2 REQUIRED)
+find_package(GLEW REQUIRED)
+
 set(GLM_TEST_ENABLE off)
 add_subdirectory(lib/glm)
-
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${SOURCES_LIB})
-target_link_libraries(${PROJECT_NAME} sfml-graphics GLEW)
-target_include_directories(${PROJECT_NAME} PUBLIC lib/glm)
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARY} ${GLEW_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PUBLIC lib/glm ${SDL2_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS})

@@ -1,4 +1,4 @@
-#include <stdarg.h>
+#include <cstdarg>
 #include <iostream>
 #include "util.h"
 

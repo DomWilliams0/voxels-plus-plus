@@ -2,7 +2,7 @@
 #define VOXELS_WORLD_RENDERER_H
 
 
-#include <SFML/OpenGL.h>
+#include <GL/glew.h>
 #include <glm/glm.hpp>
 
 #include "world.h"

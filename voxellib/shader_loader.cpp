@@ -1,6 +1,5 @@
 #include <cstdio>
 #include <GL/glew.h>
-#include <SFML/OpenGL.h>
 #include <cstring>
 #include <cstdlib>
 

@@ -3,9 +3,18 @@
 
 
 #include <SFML/OpenGL.h>
+#include <glm/glm.hpp>
 
 #include "world.h"
 #include "error.h"
+
+extern int window_width;
+extern int window_height;
+
+inline void register_window_resize(int w, int h) {
+    window_width = w;
+    window_height = h;
+}
 
 class WorldRenderer {
 public:
@@ -13,7 +22,7 @@ public:
 
     int init(World *world);
 
-    void render_world(double interpolation);
+    void render_world(const glm::mat4 &view, double alpha);
 
 private:
     World *world_;

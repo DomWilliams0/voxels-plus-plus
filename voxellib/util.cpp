@@ -23,3 +23,11 @@ void resolve_resource_path(std::string &out, const char *relative_path) {
     out.append(relative_path);
 }
 
+void log_mat4(const char *pre, const glm::mat4 &mat) {
+    log("%s===", pre);
+    for (int i = 0; i < 4; ++i) {
+        log("(%f, %f, %f, %f)", mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
+    }
+    log("===");
+}
+

@@ -1,0 +1,3 @@
+[submodule "voxellib/lib/glm"]
+	path = voxellib/lib/glm
+	url = https://github.com/g-truc/glm.git

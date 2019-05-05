@@ -2,9 +2,9 @@
 #define VOXELS_GAME_H
 
 
-#include "world.h"
+#include "world/world_renderer.h"
+#include "world/world.h"
 #include "camera.h"
-#include "world_renderer.h"
 
 #include <SDL2/SDL.h>
 

@@ -1,8 +1,8 @@
 #include <GL/glew.h>
 #include "world_renderer.h"
-#include "util.h"
-#include "error.h"
-#include "shader_loader.h"
+#include "../util.h"
+#include "../error.h"
+#include "../shader_loader.h"
 #include "glm/gtx/string_cast.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
@@ -32,7 +32,7 @@ int WorldRenderer::init(World *world) {
 
     glGenBuffers(1, &vbo_);
     glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(BLOCK_VERTICES), BLOCK_VERTICES, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(kBlockVertices), kBlockVertices, GL_STATIC_DRAW);
 
 
     return kErrorSuccess;
@@ -44,7 +44,7 @@ int WorldRenderer::init(World *world) {
 WorldRenderer::WorldRenderer() : world_(nullptr) {} // uninitialised
 
 
-void WorldRenderer::render_world(const glm::mat4 &view, double alpha) {
+void WorldRenderer::render_world(const glm::mat4 &view) {
     // clear screen
     glClearColor(1, 1, 1, 1);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -61,23 +61,39 @@ void WorldRenderer::render_world(const glm::mat4 &view, double alpha) {
         glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(proj));
     }
 
-    // update view TODO per chunk
-    {
-        glm::mat4 view_copy(view);
-        glm::translate(view_copy, glm::vec3(0.5f, 5.f, 0.f));
-        int loc = glGetUniformLocation(prog_, "view");
-        glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(view_copy));
+    // iterate renderable chunks
+    glm::vec3 world_transform;
+    auto chunks_it(world_->renderable_chunks());
+    Chunk *chunk;
+    while (chunks_it.next(&chunk)) {
+        // enable chunk
+        // TODO can we use the same vao for all chunks?
+        glBindVertexArray(chunk->vao());
+        glBindBuffer(GL_ARRAY_BUFFER, chunk->vbo());
+
+        // enable attributes
+        {
+            // 0: pos
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+        }
+
+        // update view with chunk world offset
+        chunk->world_offset(world_transform);
+        update_view(view, world_transform);
+
+        // TODO instancing?
+        glDrawArrays(GL_TRIANGLES, 0, chunk->vertex_count());
     }
-
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-    int vertex_count = 36;
-    glDrawArrays(GL_TRIANGLES, 0, vertex_count);
-
 }
 
 void WorldRenderer::toggle_wireframe() {
     glPolygonMode(GL_FRONT_AND_BACK, (wireframe_ = !wireframe_) ? GL_LINE : GL_FILL);
+}
+
+void WorldRenderer::update_view(const glm::mat4 &view, const glm::vec3 &world_transform) {
+    glm::mat4 view_copy(view);
+    glm::translate(view_copy, world_transform);
+    int loc = glGetUniformLocation(prog_, "view");
+    glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(view_copy));
 }

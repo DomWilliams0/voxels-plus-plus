@@ -9,18 +9,19 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 set(SOURCES
         game.cpp
         game.h
-        world.cpp
-        world.h
+        world/world.cpp
+        world/world.h
         error.h
-        world_renderer.cpp
-        world_renderer.h
+        world/world_renderer.cpp
+        world/world_renderer.h
         shader_loader.cpp
         shader_loader.h
         util.cpp
         util.h
         camera.cpp
         camera.h
-        )
+        world/chunk.cpp world/chunk.h world/block.h
+        lib/multidim_grid.hpp)
 
 
 find_package(SDL2 REQUIRED)
@@ -30,4 +31,4 @@ set(GLM_TEST_ENABLE off)
 add_subdirectory(lib/glm)
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${SOURCES_LIB})
 target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARY} ${GLEW_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC lib/glm ${SDL2_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} PUBLIC lib/glm lib ${SDL2_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS})

@@ -2,10 +2,11 @@
 #define VOXELS_WORLD_RENDERER_H
 
 
-#include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <GL/glew.h>
 
 #include "world.h"
+#include "block.h"
 #include "error.h"
 
 extern int window_width;
@@ -22,7 +23,7 @@ public:
 
     int init(World *world);
 
-    void render_world(const glm::mat4 &view, double alpha);
+    void render_world(const glm::mat4 &view);
 
     void toggle_wireframe();
 
@@ -32,12 +33,17 @@ private:
     GLuint prog_, vao_, vbo_;
     bool wireframe_ = false;
 
+    /**
+     * Sets the shader uniform `view` after translating by `world_transform`
+     *
+     * @param view Camera view matrix
+     * @param world_transform Offset to apply
+     */
+    void update_view(const glm::mat4 &view, const glm::vec3 &world_transform);
 };
 
-const float BLOCK_SIZE = 0.5f;
-
-#define B BLOCK_SIZE // for brevity
-const float BLOCK_VERTICES[] = {
+#define B kBlockSize // for brevity
+const float kBlockVertices[] = {
         // front
         -B, -B, -B,
         -B, -B, +B,

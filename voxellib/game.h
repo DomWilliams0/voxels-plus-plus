@@ -20,10 +20,13 @@ private:
     SDL_Window *window_ = nullptr;
     Camera camera_;
     CameraState last_camera_state_;
+    bool running_ = true;
 
     void tick(double dt);
 
     void render(double alpha);
+
+    void handle_keypress(SDL_Keycode key, bool down);
 };
 
 

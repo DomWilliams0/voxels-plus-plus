@@ -24,10 +24,13 @@ public:
 
     void render_world(const glm::mat4 &view, double alpha);
 
+    void toggle_wireframe();
+
 private:
     World *world_;
 
     GLuint prog_, vao_, vbo_;
+    bool wireframe_ = false;
 
 };
 

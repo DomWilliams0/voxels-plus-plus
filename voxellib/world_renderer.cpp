@@ -77,3 +77,7 @@ void WorldRenderer::render_world(const glm::mat4 &view, double alpha) {
     glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 
 }
+
+void WorldRenderer::toggle_wireframe() {
+    glPolygonMode(GL_FRONT_AND_BACK, (wireframe_ = !wireframe_) ? GL_LINE : GL_FILL);
+}

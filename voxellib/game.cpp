@@ -48,18 +48,16 @@ int Game::run() {
     double acc = 0;
 
     SDL_Event event;
-    bool running = true;
-    while (running) {
+    while (running_) {
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
                 case SDL_QUIT:
-                    running = false;
+                    running_ = false;
                     break;
 
                 case SDL_KEYUP:
-                    if (event.key.keysym.sym == SDLK_ESCAPE) {
-                        running = false;
-                    }
+                case SDL_KEYDOWN:
+                    handle_keypress(event.key.keysym.sym, event.type == SDL_KEYDOWN);
                     break;
 
                 case SDL_WINDOWEVENT:
@@ -118,5 +116,12 @@ void Game::render(double alpha) {
 
     CameraState interpolated(camera_.interpolate_from(last_camera_state_, alpha));
     renderer_.render_world(interpolated.transform(), alpha);
+}
+
+void Game::handle_keypress(SDL_Keycode key, bool down) {
+    if (key == SDLK_ESCAPE && !down)
+        running_ = false;
+    else if (key == SDLK_y && !down)
+        renderer_.toggle_wireframe();
 }
 

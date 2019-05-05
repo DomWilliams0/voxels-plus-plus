@@ -6,6 +6,12 @@ enum class BlockType {
     kThing, // bah
 };
 
+const static long kBlockTypeColours[] = {
+        0xfffffff,  // kAir
+        0xff577fda, // kThing
+};
+
+
 struct Block {
     BlockType type;
 };

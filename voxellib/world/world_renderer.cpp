@@ -62,7 +62,7 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
     }
 
     // iterate renderable chunks
-    glm::vec3 world_transform;
+    glm::ivec3 world_transform;
     auto chunks_it(world_->renderable_chunks());
     Chunk *chunk;
     while (chunks_it.next(&chunk)) {
@@ -73,9 +73,17 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
 
         // enable attributes
         {
+            size_t word_size = sizeof(float);
+            size_t stride = kChunkMeshWordsPerInstance * word_size;
+
             // 0: pos
             glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+            glVertexAttribPointer(0, 3, GL_FLOAT, false, stride, 0);
+
+            // 1: colour
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, true, stride, reinterpret_cast<const void *>(3L * word_size));
+
         }
 
         // update view with chunk world offset
@@ -92,8 +100,7 @@ void WorldRenderer::toggle_wireframe() {
 }
 
 void WorldRenderer::update_view(const glm::mat4 &view, const glm::vec3 &world_transform) {
-    glm::mat4 view_copy(view);
-    glm::translate(view_copy, world_transform);
+    glm::mat4 translated_view = glm::translate(view, world_transform);
     int loc = glGetUniformLocation(prog_, "view");
-    glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(view_copy));
+    glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(translated_view));
 }

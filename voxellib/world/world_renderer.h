@@ -42,6 +42,9 @@ private:
     void update_view(const glm::mat4 &view, const glm::vec3 &world_transform);
 };
 
+// as defined in kBlockVertices, 3 for pos
+const int kFloatsPerVertex = 3;
+
 #define B kBlockSize // for brevity
 const float kBlockVertices[] = {
         // front
@@ -93,5 +96,17 @@ const float kBlockVertices[] = {
         +B, +B, -B,
 };
 #undef B
+
+const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
+
+/**
+ * vec3f (pos) + vec4b (colour)
+ */
+const int kChunkMeshWordsPerInstance = 3 + 1 /*+ 1*/;
+
+/**
+ * 12 triangles
+ */
+const int kChunkMeshVerticesPerBlock = 12 * 3;
 
 #endif

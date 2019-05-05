@@ -3,7 +3,7 @@
 
 #include <cstdint>
 #include <GL/gl.h>
-#include "glm/vec3.hpp"
+#include "glm/ext/vector_int3.hpp"
 
 #include "multidim_grid.hpp"
 #include "block.h"
@@ -24,10 +24,10 @@ public:
     inline int mesh_size() const { return mesh_size_; }
 
 private:
-    int *mesh_;
-    unsigned int mesh_size_;
+    int *mesh_ = nullptr;
+    unsigned int mesh_size_ = 0;
 
-    GLuint vao_, vbo_;
+    GLuint vao_ = 0, vbo_ = 0;
 
     friend class Chunk;
 };
@@ -49,7 +49,7 @@ public:
 
     bool loaded() const;
 
-    void world_offset(glm::vec3 &out);
+    void world_offset(glm::ivec3 &out);
 
     inline int vertex_count() const { return mesh_.mesh_size_; }
 
@@ -66,6 +66,12 @@ private:
      * Lazy, will only init if not set
      */
     void lazily_init_render_buffers();
+
+    void generate_mesh();
+
+    const Block &block_from_index(unsigned long index) const;
+
+    void expand_block_index(int idx, glm::ivec3 &out) const;
 };
 
 

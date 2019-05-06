@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
+#include "glm/glm.hpp"
 #include "ui.h"
 #include "camera.h"
 
@@ -26,6 +27,7 @@ void Ui::init(SDL_Window *window, const char *glsl_version, SDL_GLContext *gl_co
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     pos_str_.reserve(64);
+    chunk_str_.reserve(64);
     dir_str_.reserve(64);
 }
 
@@ -45,13 +47,42 @@ void Ui::do_frame(const Camera &camera) {
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-static void format_vec3(const char *prefix, const glm::vec3 &vec, std::string &out) {
+enum Format {
+    kFormatVec3,
+    kFormatVec2,
+    kFormatiVec3,
+    kFormatiVec2,
+};
+
+static void format(const char *prefix, Format format, void *vec, std::string &out) {
     char buf[64];
 
     out.clear();
     out.append(prefix);
 
-    snprintf(buf, 64, "%6.02f, %6.02f, %6.02f", vec.x, vec.y, vec.z);
+    switch (format) {
+        case kFormatVec3: {
+            glm::vec3 *v = static_cast<glm::vec3 *>(vec);
+            snprintf(buf, 64, "%6.02f, %6.02f, %6.02f", v->x, v->y, v->z);
+            break;
+        }
+        case kFormatVec2: {
+            glm::vec2 *v = static_cast<glm::vec2 *>(vec);
+            snprintf(buf, 64, "%6.02f, %6.02f", v->x, v->y);
+            break;
+        }
+        case kFormatiVec3: {
+            glm::ivec3 *v = static_cast<glm::ivec3 *>(vec);
+            snprintf(buf, 64, "%6d, %6d, %6d", v->x, v->y, v->z);
+            break;
+        }
+        case kFormatiVec2: {
+            glm::ivec2 *v = static_cast<glm::ivec2 *>(vec);
+            snprintf(buf, 64, "%6d, %6d", v->x, v->y);
+            break;
+        }
+    }
+
     out.append(buf);
 
     ImGui::TextUnformatted(out.c_str());
@@ -70,11 +101,21 @@ void Ui::make_ui(const Camera &camera) {
 
     ImGui::Begin("Debug", nullptr, flags);
 
-    // position
-    format_vec3("Position:  ", camera.pos(), pos_str_);
+    // camera position
+    format("Position:  ", kFormatVec3, (void *) &camera.pos(), pos_str_);
 
-    // direction
-    format_vec3("Direction: ", camera.dir(), dir_str_);
+    {
+        ChunkId_t cam_chunk_id = Chunk::owning_chunk(Block::from_world_pos(camera.pos()));
+        int x, z;
+        ChunkId_deconstruct(cam_chunk_id, x, z);
+        glm::ivec2 vec(x, z);
+        format("Chunk:     ", kFormatiVec2, (void *) &vec, chunk_str_);
+    }
+
+    // camera direction
+    glm::vec2 cam_dir = camera.dir();
+    format("Direction: ", kFormatVec2, (void *) &cam_dir, dir_str_);
+
 
     ImGui::End();
 }

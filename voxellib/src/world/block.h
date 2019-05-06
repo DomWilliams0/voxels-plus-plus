@@ -16,10 +16,24 @@ const static long kBlockTypeColours[] = {
 };
 
 
+/**
+ * blocks per m
+ */
+const int kBlockScale = 4;
+
+// /2 again because radius, not diameter
+const float kBlockRadius = 1.f / kBlockScale / 2.f;
+
 struct Block {
     BlockType type;
-};
 
-const float kBlockSize = 0.1f;
+    inline static glm::ivec3 from_world_pos(const glm::vec3 &world_pos) {
+        return {
+                world_pos.x * kBlockScale,
+                world_pos.y * kBlockScale,
+                world_pos.z * kBlockScale,
+        };
+    }
+};
 
 #endif

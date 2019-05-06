@@ -49,8 +49,12 @@ public:
 
     void rotate(int dx, int dy);
 
-    inline const glm::vec3 pos() const { return state_.position_; }
-    inline glm::vec3 dir() const { return {glm::yaw(state_.rotation_), glm::pitch(state_.rotation_), 0}; }
+    /**
+     * @return World pos
+     */
+    inline const glm::vec3 &pos() const { return state_.position_; }
+
+    inline glm::vec2 dir() const { return {glm::yaw(state_.rotation_), glm::pitch(state_.rotation_)}; }
 
     /**
      * @return Copy of state before tick

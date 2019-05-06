@@ -23,6 +23,7 @@ private:
 
     std::string pos_str_;
     std::string dir_str_;
+    std::string chunk_str_;
 };
 
 

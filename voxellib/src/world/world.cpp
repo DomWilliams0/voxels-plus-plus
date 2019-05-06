@@ -7,17 +7,15 @@
 
 World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {
     // dummy
-    Chunk *c = new Chunk(2, 1);
+    Chunk *c = new Chunk(0, 0);
 
-    // init terrain
-    for (unsigned long w = 0; w < kChunkWidth; w++) {
-        for (unsigned long h = 0; h < kChunkHeight; h++) {
-            for (unsigned long d = 0; d < kChunkDepth; d++) {
-                Block &b = c->terrain_[{w, h, d}];
-                b.type = BlockType::kMarker;
-            }
-        }
-    }
+    spawn_.position_.y = 5;
+
+    // init terrain with something silly
+    c->terrain_[{0, 0, 0}].type = BlockType::kGrass;
+    c->terrain_[{kChunkWidth - 1, 0, 0}].type = BlockType::kMarker;
+    c->terrain_[{0, kChunkHeight - 1, 0}].type = BlockType::kMarker;
+    c->terrain_[{0, 0, kChunkDepth - 1}].type = BlockType::kMarker;
 
     // generate mesh
     c->generate_mesh();

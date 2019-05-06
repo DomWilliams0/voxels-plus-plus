@@ -16,9 +16,7 @@ public:
 
     inline void stop_following() { followee_ = nullptr; }
 
-    inline glm::vec3 pos() const { return pos_; }
-
-    inline glm::ivec3 ipos() const { return { pos_.x, pos_.y, pos_.z}; }
+//    inline glm::vec3 pos() const { return pos_; }
 
     bool chunk(ChunkId_t &chunk_out);
 

@@ -3,8 +3,7 @@
 
 #include <cstdint>
 #include <GL/gl.h>
-#include "glm/ext/vector_int3.hpp"
-#include "glm/vec2.hpp"
+#include "glm/vec3.hpp"
 
 #include "multidim_grid.hpp"
 #include "block.h"
@@ -74,10 +73,10 @@ public:
 
     /**
      *
-     * @param world_block_pos Global block pos
-     * @return chunk that owns it
+     * @param block_pos Global block pos
+     * @return Chunk that owns it
      */
-    static ChunkId_t owning_chunk_coord(const glm::ivec3 &world_block_pos);
+    static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
 
 private:
     int32_t x_, z_;

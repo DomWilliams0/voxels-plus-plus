@@ -45,7 +45,7 @@ private:
 // as defined in kBlockVertices, 3 for pos
 const int kFloatsPerVertex = 3;
 
-#define B kBlockSize // for brevity
+#define B kBlockRadius // for brevity
 const float kBlockVertices[] = {
         // front
         -B, -B, -B,

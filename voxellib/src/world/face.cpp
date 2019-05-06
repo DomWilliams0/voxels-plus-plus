@@ -1,24 +1,24 @@
 #include "face.h"
 
-void face_offset(Face face, const glm::ivec3 &in, glm::ivec3 &out) {
+void face_offset(Face face, glm::ivec3 &out) {
     switch (face) {
         case kFront:
-            out = in + glm::ivec3(-1, 0, 0);
+            out.x--;
             break;
         case kLeft:
-            out = in + glm::ivec3(0, 0, -1);
+            out.z--;
             break;
         case kRight:
-            out = in + glm::ivec3(0, 0, 1);
+            out.z++;
             break;
         case kTop:
-            out = in + glm::ivec3(0, 1, 0);
+            out.y++;
             break;
         case kBottom:
-            out = in + glm::ivec3(0, -1, 0);
+            out.y--;
             break;
         case kBack:
-            out = in + glm::ivec3(1, 0, 0);
+            out.x++;
             break;
     }
 }

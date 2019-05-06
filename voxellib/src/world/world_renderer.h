@@ -97,8 +97,6 @@ const float kBlockVertices[] = {
 };
 #undef B
 
-const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
-
 /**
  * vec3f (pos) + vec4b (colour)
  */

@@ -16,10 +16,13 @@ const int kChunkWidth = 1 << kChunkWidthShift;
 const int kChunkHeight = 1 << kChunkHeightShift;
 const int kChunkDepth = 1 << kChunkDepthShift;
 
+const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
+
+
 typedef uint64_t ChunkId_t;
 
 inline ChunkId_t ChunkId(int32_t x, int32_t z) {
-    return ((uint64_t) x << 32) | (uint32_t ) z;
+    return ((uint64_t) x << 32) | (uint32_t) z;
 }
 
 const ChunkId_t kChunkIdInit = UINT64_MAX;
@@ -77,6 +80,8 @@ public:
      * @return Chunk that owns it
      */
     static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
+
+    static void expand_block_index(const ChunkTerrain *terrain, int idx, glm::ivec3 &out);
 
 private:
     int32_t x_, z_;

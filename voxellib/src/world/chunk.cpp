@@ -39,9 +39,12 @@ void Chunk::generate_mesh() {
 
     for (int block_idx = 0; block_idx < kBlocksPerChunk; ++block_idx) {
         const Block &block = block_from_index(block_idx);
+        // cull if totally occluded
+        if (block.face_visibility_ == kFaceVisibilityNone)
+            continue;
 
         // cull air blocks
-        if (block.type == BlockType::kAir)
+        if (block.type_ == BlockType::kAir)
             continue;
 
         expand_block_index(block_idx, block_pos);
@@ -49,8 +52,9 @@ void Chunk::generate_mesh() {
         for (int face_idx = 0; face_idx < kFaceCount; ++face_idx) {
             auto face = kFaces[face_idx];
 
-//            if (!FACE_IS_VISIBLE(block.face_visibility, face))
-//                continue;
+            // cull face if not visible
+            if (!face_is_visible(block.face_visibility_, face))
+                continue;
 
             int stride = 6 * 3; // 6 vertices * 6 floats per face
             const float *verts = kBlockVertices + (stride * (int) face);
@@ -68,7 +72,7 @@ void Chunk::generate_mesh() {
                     buffer[out_idx++] = f_or_i.i;
                 }
                 // colour
-                int colour = kBlockTypeColours[static_cast<int>(block.type)];
+                int colour = kBlockTypeColours[static_cast<int>(block.type_)];
                 buffer[out_idx++] = colour;
 /*
                 // ao
@@ -88,11 +92,15 @@ const Block &Chunk::block_from_index(unsigned long index) const {
     return terrain_[terrain_.unflatten(index)];
 }
 
-void Chunk::expand_block_index(int idx, glm::ivec3 &out) const {
-    auto coord = terrain_.unflatten(idx);
+void Chunk::expand_block_index(const ChunkTerrain *terrain, int idx, glm::ivec3 &out) {
+    auto coord = terrain->unflatten(idx);
     out[0] = coord[0];
     out[1] = coord[1];
     out[2] = coord[2];
+}
+
+void Chunk::expand_block_index(int idx, glm::ivec3 &out) const {
+    Chunk::expand_block_index(&terrain_, idx, out);
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {

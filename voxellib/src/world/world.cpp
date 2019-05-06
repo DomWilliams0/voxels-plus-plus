@@ -5,24 +5,7 @@
 #include "util.h"
 #include "loader.h"
 
-World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {
-    // dummy
-    Chunk *c = new Chunk(0, 0);
-
-    spawn_.position_.y = 5;
-
-    // init terrain with something silly
-    c->terrain_[{0, 0, 0}].type = BlockType::kGrass;
-    c->terrain_[{kChunkWidth - 1, 0, 0}].type = BlockType::kMarker;
-    c->terrain_[{0, kChunkHeight - 1, 0}].type = BlockType::kMarker;
-    c->terrain_[{0, 0, kChunkDepth - 1}].type = BlockType::kMarker;
-
-    // generate mesh
-    c->generate_mesh();
-
-    // register
-    add_loaded_chunk(c);
-}
+World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {}
 
 void World::add_loaded_chunk(Chunk *chunk) {
     if (chunk == nullptr || !chunk->loaded()) throw std::runtime_error("chunk is not loaded!");

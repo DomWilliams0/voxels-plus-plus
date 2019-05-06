@@ -1,6 +1,8 @@
 #ifndef VOXELS_BLOCK_H
 #define VOXELS_BLOCK_H
 
+#include "face.h"
+
 enum class BlockType {
     kAir = 0,
     kGrass,
@@ -15,6 +17,10 @@ const static long kBlockTypeColours[] = {
         0xffff0d00, // kMarker
 };
 
+inline bool BlockType_opaque(BlockType bt) {
+    return bt != BlockType::kAir;
+}
+
 
 /**
  * blocks per m
@@ -25,7 +31,11 @@ const int kBlockScale = 2;
 const float kBlockRadius = 1.f / kBlockScale / 2.f;
 
 struct Block {
-    BlockType type;
+    BlockType type_;
+    FaceVisibility face_visibility_ : kFaceCount;
+
+    Block(BlockType type = BlockType::kAir, FaceVisibility face_visibility = kFaceVisibilityNone)
+            : type_(type), face_visibility_(face_visibility) {}
 
     inline static glm::ivec3 from_world_pos(const glm::vec3 &world_pos) {
         return {

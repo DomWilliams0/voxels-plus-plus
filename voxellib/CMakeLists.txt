@@ -21,7 +21,27 @@ set(SOURCES
         camera.cpp
         camera.h
         world/chunk.cpp world/chunk.h world/block.h
-        lib/multidim_grid.hpp world/face.h world/face.cpp world/centre.h)
+        lib/multidim_grid.hpp world/face.h world/face.cpp world/centre.h ui.cpp ui.h)
+
+
+# imgui
+set(SOURCES ${SOURCES}
+        lib/imgui/imconfig.h
+        lib/imgui/imgui.cpp
+        lib/imgui/imgui.h
+        lib/imgui/imgui_demo.cpp
+        lib/imgui/imgui_draw.cpp
+        lib/imgui/imgui_impl_opengl3.cpp
+        lib/imgui/imgui_impl_opengl3.h
+        lib/imgui/imgui_impl_sdl.cpp
+        lib/imgui/imgui_impl_sdl.h
+        lib/imgui/imgui_internal.h
+        lib/imgui/imgui_widgets.cpp
+        lib/imgui/imstb_rectpack.h
+        lib/imgui/imstb_textedit.h
+        lib/imgui/imstb_truetype.h
+        )
+include_directories(lib/imgui)
 
 
 find_package(SDL2 REQUIRED)

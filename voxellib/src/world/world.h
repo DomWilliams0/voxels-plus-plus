@@ -18,7 +18,7 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
 }
 
 // radius around player to load chunks
-const int kLoadedChunkRadius = 2;
+const int kLoadedChunkRadius = 4;
 
 // chunk map entry
 struct ChunkEntry {

@@ -16,8 +16,6 @@ public:
 
     inline void stop_following() { followee_ = nullptr; }
 
-//    inline glm::vec3 pos() const { return pos_; }
-
     bool chunk(ChunkId_t &chunk_out);
 
     inline void tick() { if (followee_ != nullptr) followee_->get_current_position(pos_); }

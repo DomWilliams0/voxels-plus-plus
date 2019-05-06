@@ -19,7 +19,7 @@ const static long kBlockTypeColours[] = {
 /**
  * blocks per m
  */
-const int kBlockScale = 4;
+const int kBlockScale = 2;
 
 // /2 again because radius, not diameter
 const float kBlockRadius = 1.f / kBlockScale / 2.f;

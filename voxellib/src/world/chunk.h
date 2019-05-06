@@ -19,10 +19,10 @@ const int kChunkDepth = 1 << kChunkDepthShift;
 typedef uint64_t ChunkId_t;
 
 inline ChunkId_t ChunkId(int32_t x, int32_t z) {
-    return ((int64_t) x << 32) | z;
+    return ((uint64_t) x << 32) | (uint32_t ) z;
 }
 
-const ChunkId_t kChunkIdInit = INT64_MAX;
+const ChunkId_t kChunkIdInit = UINT64_MAX;
 
 inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
     x = c_id >> 32;

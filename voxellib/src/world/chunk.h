@@ -44,6 +44,7 @@ private:
     friend class Chunk;
 };
 
+typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> ChunkTerrain;
 
 class Chunk {
 public:
@@ -82,7 +83,7 @@ private:
     int32_t x_, z_;
 
     // TODO subchunks
-    multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> terrain_;
+    ChunkTerrain terrain_; // TODO move to a special heap instead of being inline
     ChunkMesh mesh_;
 
     friend class World;

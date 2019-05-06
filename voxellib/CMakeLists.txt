@@ -29,7 +29,8 @@ set(SOURCES
         src/ui.cpp
         src/ui.h
         lib/multidim_grid.hpp
-        )
+        src/world/generation/generator.cpp src/world/generation/generator.h
+        src/world/loader.cpp src/world/loader.h)
 include_directories(src)
 
 

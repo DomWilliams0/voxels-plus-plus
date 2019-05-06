@@ -1,13 +1,12 @@
 #include <GL/glew.h>
+#include <error.h>
 #include "world.h"
 #include "camera.h"
 #include "util.h"
+#include "loader.h"
 
 World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {
-
     // dummy
-    spawn_.position_ = {32, 10, 5};
-    spawn_.direction_ = {-1, -0.5, 0};
     Chunk *c = new Chunk(2, 1);
 
     // init terrain
@@ -15,7 +14,7 @@ World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn
         for (unsigned long h = 0; h < kChunkHeight; h++) {
             for (unsigned long d = 0; d < kChunkDepth; d++) {
                 Block &b = c->terrain_[{w, h, d}];
-                b.type = BlockType::kThing;
+                b.type = BlockType::kMarker;
             }
         }
     }
@@ -74,6 +73,20 @@ void World::update_active_chunks() {
             // if unloaded, need to load
             if (entry.state == ChunkState::kUnloaded) {
                 // TODO post request to load
+                // do NOT do in this thread!
+
+                log("loading chunk %d, %d", x, z);
+                Chunk *chunk = new Chunk(x, z);
+                int ret;
+                if ((ret = kWorldLoader.load(c, &chunk->terrain_)) != kErrorSuccess) {
+                    log("chunk loading failed: %d", ret);
+                    // TODO actually handle error
+                    delete chunk;
+                } else {
+                    chunk->generate_mesh();
+                    add_loaded_chunk(chunk);
+                }
+
                 continue;
             }
         }

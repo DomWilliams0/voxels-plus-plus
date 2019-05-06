@@ -5,6 +5,7 @@
 #include "glm/vec3.hpp"
 #include "glm/mat4x4.hpp"
 #include "glm/gtc/quaternion.hpp"
+#include "world/centre.h"
 
 const double kCameraTurnSpeed = 0.001;
 const float kCameraMoveSpeed = 10.0f;
@@ -37,14 +38,19 @@ private:
 
 };
 
-class Camera {
+class Camera : public ICentreOfTheGoddamnWorld {
 public:
 
     Camera(glm::vec3 start_pos, glm::vec3 start_dir);
 
     Camera() : Camera(glm::vec3(0.f), glm::vec3(1.f, 0.f, 0.f)) {};
 
+    void set(glm::vec3 start_pos, glm::vec3 start_dir);
+
     void rotate(int dx, int dy);
+
+    inline const glm::vec3 pos() const { return state_.position_; }
+    inline glm::vec3 dir() const { return {glm::yaw(state_.rotation_), glm::pitch(state_.rotation_), 0}; }
 
     /**
      * @return Copy of state before tick
@@ -52,6 +58,9 @@ public:
     CameraState tick(double dt);
 
     CameraState interpolate_from(const CameraState &from, double alpha) const;
+
+private:
+    void get_current_position(glm::vec3 &out) const override;
 
 private:
     double yaw_, pitch_;

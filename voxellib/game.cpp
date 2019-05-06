@@ -29,16 +29,17 @@ int Game::run() {
     SDL_GLContext gl = SDL_GL_CreateContext(window_);
     SDL_GL_MakeCurrent(window_, gl);
 
-    // init renderer
+    // init renderer and GL
     int ret;
     if ((ret = renderer_.init(&world_)) != kErrorSuccess)
         return ret;
 
-    // TODO start at a less hard-coded position
-//    camera_ = Camera(glm::vec3(-4.f, 3.f, 0.75f),
-//                     glm::vec3(-0.3f, -0.5f, 1.f));
-    CameraState last_camera_state{};
+    // init UI
+    ui_.init(window_, kGlslVersion, &gl);
 
+    // init camera
+    CameraState last_camera_state;
+    world_.register_camera(&camera_);
 
     // timestep
     double t = 0;
@@ -103,12 +104,14 @@ int Game::run() {
         SDL_GL_SwapWindow(window_);
     }
 
+    cleanup();
     return kErrorSuccess;
 }
 
 void Game::tick(double dt) {
 //    log("ticking with dt %f", dt);
     last_camera_state_ = camera_.tick(dt);
+    world_.tick();
 }
 
 void Game::render(double alpha) {
@@ -116,6 +119,8 @@ void Game::render(double alpha) {
 
     CameraState interpolated(camera_.interpolate_from(last_camera_state_, alpha));
     renderer_.render_world(interpolated.transform());
+
+    ui_.do_frame(camera_);
 }
 
 void Game::handle_keypress(SDL_Keycode key, bool down) {
@@ -123,5 +128,10 @@ void Game::handle_keypress(SDL_Keycode key, bool down) {
         running_ = false;
     else if (key == SDLK_y && !down)
         renderer_.toggle_wireframe();
+}
+
+void Game::cleanup() {
+    // TODO cleanup world
+    ui_.cleanup();
 }
 

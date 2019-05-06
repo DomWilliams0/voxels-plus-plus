@@ -5,8 +5,11 @@
 #include "world/world_renderer.h"
 #include "world/world.h"
 #include "camera.h"
+#include "ui.h"
 
 #include <SDL2/SDL.h>
+
+const char *kGlslVersion = "#version 330 core";
 
 class Game {
 public:
@@ -22,11 +25,15 @@ private:
     CameraState last_camera_state_;
     bool running_ = true;
 
+    Ui ui_;
+
     void tick(double dt);
 
     void render(double alpha);
 
     void handle_keypress(SDL_Keycode key, bool down);
+
+    void cleanup();
 };
 
 

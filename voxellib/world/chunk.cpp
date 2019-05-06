@@ -95,3 +95,19 @@ void Chunk::expand_block_index(int idx, glm::ivec3 &out) const {
     out[2] = coord[2];
 }
 
+ChunkId_t Chunk::owning_chunk_coord(const glm::ivec3 &world_block_pos) {
+    return ChunkId(
+            world_block_pos.x >> kChunkWidthShift,
+            world_block_pos.z >> kChunkDepthShift
+    );
+}
+
+bool WorldCentre::chunk(ChunkId_t &chunk_out) {
+    auto current_chunk = Chunk::owning_chunk_coord({pos_.x, pos_.y, pos_.z});
+    bool changed = current_chunk != last_chunk_;
+
+    last_chunk_ = current_chunk;
+    chunk_out = current_chunk;
+
+    return changed;
+}

@@ -4,18 +4,30 @@
 #include <cstdint>
 #include <GL/gl.h>
 #include "glm/ext/vector_int3.hpp"
+#include "glm/vec2.hpp"
 
 #include "multidim_grid.hpp"
 #include "block.h"
 
-const int kChunkWidth = 16;
-const int kChunkHeight = 16; // TODO 1024
-const int kChunkDepth = 16;
+const int kChunkWidthShift = 4; // 16
+const int kChunkHeightShift = 4; // 16 TODO change to 10 = 1024
+const int kChunkDepthShift = 4; // 16
+
+const int kChunkWidth = 1 << kChunkWidthShift;
+const int kChunkHeight = 1 << kChunkHeightShift;
+const int kChunkDepth = 1 << kChunkDepthShift;
 
 typedef uint64_t ChunkId_t;
 
 inline ChunkId_t ChunkId(int32_t x, int32_t z) {
     return ((int64_t) x << 32) | z;
+}
+
+const ChunkId_t kChunkIdInit = INT64_MAX;
+
+inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
+    x = c_id >> 32;
+    z = c_id & ((1L << 32) - 1);
 }
 
 class ChunkMesh {
@@ -47,11 +59,24 @@ public:
 
     inline GLuint vbo() const { return mesh_.vbo_; }
 
+    /**
+     * @return If terrain and mesh are initialised
+     */
     bool loaded() const;
 
+    /**
+     * @param out Set to the block pos of the bottom corner of this chunk
+     */
     void world_offset(glm::ivec3 &out);
 
     inline int vertex_count() const { return mesh_.mesh_size_; }
+
+    /**
+     *
+     * @param world_block_pos Global block pos
+     * @return chunk that owns it
+     */
+    static ChunkId_t owning_chunk_coord(const glm::ivec3 &world_block_pos);
 
 private:
     int32_t x_, z_;

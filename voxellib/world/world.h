@@ -17,6 +17,9 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
     return cs == ChunkState::kLoaded; // TODO or mesh being updated
 }
 
+// radius around player to load chunks
+const int kLoadedChunkRadius = 2;
+
 // chunk map entry
 struct ChunkEntry {
     ChunkState state;
@@ -53,6 +56,9 @@ private:
         glm::vec3 direction_;
     } spawn_;
 
+    void update_active_chunks();
+
+    void find_chunk(ChunkId_t chunk_id, ChunkEntry &out);
 
     class RenderableChunkIterator {
     public:

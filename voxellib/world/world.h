@@ -3,7 +3,9 @@
 
 #include <vector>
 #include <unordered_map>
+#include "glm/vec3.hpp"
 #include "chunk.h"
+#include "centre.h"
 
 enum class ChunkState {
     kUnloaded = 1,
@@ -23,19 +25,33 @@ struct ChunkEntry {
 
 typedef std::unordered_map<ChunkId_t, ChunkEntry> ChunkMap;
 
+class Camera;
+
 class World {
 public:
-    World();
+    World(glm::vec3 spawn_pos = {0, 0, 0}, glm::vec3 spawn_dir = {1, 0, 0});
 
     /**
      * @param chunk Must have terrain and mesh fully loaded
      */
     void add_loaded_chunk(Chunk *chunk);
 
+    void register_camera(Camera *camera);
+
+    void tick();
+
+
 private:
     // TODO map of chunk id -> {load state, optional chunk *}
     // TODO use a hashset keyed with chunk id
     ChunkMap chunks_;
+
+    WorldCentre centre_;
+
+    struct {
+        glm::vec3 position_;
+        glm::vec3 direction_;
+    } spawn_;
 
 
     class RenderableChunkIterator {

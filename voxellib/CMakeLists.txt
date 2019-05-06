@@ -21,7 +21,7 @@ set(SOURCES
         camera.cpp
         camera.h
         world/chunk.cpp world/chunk.h world/block.h
-        lib/multidim_grid.hpp world/face.h world/face.cpp)
+        lib/multidim_grid.hpp world/face.h world/face.cpp world/centre.h)
 
 
 find_package(SDL2 REQUIRED)

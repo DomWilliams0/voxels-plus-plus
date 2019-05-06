@@ -5,8 +5,12 @@
 #include "util.h"
 
 Camera::Camera(glm::vec3 start_pos, glm::vec3 start_dir) : state_() {
+    set(start_pos, start_dir);
+}
+
+void Camera::set(glm::vec3 start_pos, glm::vec3 start_dir) {
     state_.position_ = start_pos;
-    state_.transform_ = glm::mat4(1.0); // TODO should be identity
+    state_.transform_ = glm::mat4(1.0);
 
     // yaw and pitch from vector
     glm::vec3 dir = glm::normalize(start_dir);
@@ -67,6 +71,10 @@ void Camera::update_orientation() {
 
     glm::quat orientation = pitch * yaw;
     state_.rotation_ = glm::normalize(orientation);
+}
+
+void Camera::get_current_position(glm::vec3 &out) const {
+    out = state_.position_;
 }
 
 void CameraState::update_transform() {

@@ -39,6 +39,9 @@ int Game::run() {
 //                     glm::vec3(-0.3f, -0.5f, 1.f));
     CameraState last_camera_state{};
 
+    // follow the camera
+    world_.register_camera(&camera_);
+
 
     // timestep
     double t = 0;
@@ -109,6 +112,7 @@ int Game::run() {
 void Game::tick(double dt) {
 //    log("ticking with dt %f", dt);
     last_camera_state_ = camera_.tick(dt);
+    world_.tick();
 }
 
 void Game::render(double alpha) {

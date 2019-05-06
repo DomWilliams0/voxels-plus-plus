@@ -1,8 +1,12 @@
 #include <GL/glew.h>
 #include "world.h"
+#include "../camera.h"
 
-World::World() {
+World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {
+
     // dummy
+    spawn_.position_ = {32, 10, 5};
+    spawn_.direction_ = {-1, -0.5, 0};
     Chunk *c = new Chunk(2, 1);
 
     // init terrain
@@ -33,6 +37,18 @@ World::RenderableChunkIterator World::renderable_chunks() {
     return World::RenderableChunkIterator(chunks_);
 }
 
+void World::register_camera(Camera *camera) {
+    // move to spawn position
+    camera->set(spawn_.position_, spawn_.direction_);
+
+    // follow
+    centre_.follow(camera);
+}
+
+void World::tick() {
+    centre_.tick();
+}
+
 
 bool World::RenderableChunkIterator::next(Chunk **out) {
     while (iterator_ != end_) {
@@ -55,3 +71,5 @@ bool World::RenderableChunkIterator::next(Chunk **out) {
     // all done
     return false;
 }
+
+

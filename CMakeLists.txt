@@ -8,3 +8,6 @@ include_directories(voxellib/src)
 
 add_executable(${PROJECT_NAME} main.cpp)
 target_link_libraries(${PROJECT_NAME} voxellib)
+
+enable_testing()
+add_subdirectory(test)

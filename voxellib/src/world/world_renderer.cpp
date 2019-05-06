@@ -1,8 +1,8 @@
 #include <GL/glew.h>
 #include "world_renderer.h"
-#include "../util.h"
-#include "../error.h"
-#include "../shader_loader.h"
+#include "util.h"
+#include "error.h"
+#include "shader_loader.h"
 #include "glm/gtx/string_cast.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"

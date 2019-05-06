@@ -1,7 +1,7 @@
 #include <GL/glew.h>
 #include "world.h"
-#include "../camera.h"
-#include "../util.h"
+#include "camera.h"
+#include "util.h"
 
 World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {
 

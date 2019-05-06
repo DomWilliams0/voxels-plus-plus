@@ -7,21 +7,30 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 
 set(SOURCES
-        game.cpp
-        game.h
-        world/world.cpp
-        world/world.h
-        error.h
-        world/world_renderer.cpp
-        world/world_renderer.h
-        shader_loader.cpp
-        shader_loader.h
-        util.cpp
-        util.h
-        camera.cpp
-        camera.h
-        world/chunk.cpp world/chunk.h world/block.h
-        lib/multidim_grid.hpp world/face.h world/face.cpp world/centre.h ui.cpp ui.h)
+        src/game.cpp
+        src/game.h
+        src/world/world.cpp
+        src/world/world.h
+        src/error.h
+        src/world/world_renderer.cpp
+        src/world/world_renderer.h
+        src/shader_loader.cpp
+        src/shader_loader.h
+        src/util.cpp
+        src/util.h
+        src/camera.cpp
+        src/camera.h
+        src/world/chunk.cpp
+        src/world/chunk.h
+        src/world/block.h
+        src/world/face.h
+        src/world/face.cpp
+        src/world/centre.h
+        src/ui.cpp
+        src/ui.h
+        lib/multidim_grid.hpp
+        )
+include_directories(src)
 
 
 # imgui

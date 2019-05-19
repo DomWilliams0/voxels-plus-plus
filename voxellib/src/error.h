@@ -6,6 +6,7 @@ enum VoxelError {
     kErrorGlew,
     kErrorSdl,
     kErrorShaderLoad,
+    kErrorIo,
 };
 
 #endif

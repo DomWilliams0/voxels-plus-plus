@@ -2,8 +2,7 @@
 #include "world/world.h"
 
 int main() {
-
-    World world;
+    World world({0, 2, 0});
     Game game(world);
     return game.run();
 }

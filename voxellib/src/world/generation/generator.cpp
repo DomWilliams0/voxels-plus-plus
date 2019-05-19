@@ -1,12 +1,25 @@
-#include <error.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <cstdint>
+#include <cstring>
+#include <boost/thread/locks.hpp>
+#include <dlfcn.h>
+
+#include "error.h"
+#include "util.h"
 #include "generator.h"
 
-int DummyGenerator::generate(ChunkId_t chunk_id, ChunkTerrain *terrain_out) {
+#include <boost/thread/locks.hpp>
+
+int DummyGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
     // ground
     for (size_t x = 0; x < kChunkWidth; ++x) {
         for (size_t z = 0; z < kChunkDepth; ++z) {
             for (size_t y = 0; y < 3; ++y) {
-                Block &b = terrain_out->operator[]({x, y, z});
+                Block &b = terrain_out[{x, y, z}];
                 b.type_ = x == 0 || x == kChunkWidth - 1 ||
                           z == 0 || z == kChunkDepth - 1 ? BlockType::kGrass : BlockType::kStone;
             }
@@ -18,3 +31,89 @@ int DummyGenerator::generate(ChunkId_t chunk_id, ChunkTerrain *terrain_out) {
 
     return kErrorSuccess;
 }
+
+static size_t recv_all(int s, void *buf, size_t len) {
+    size_t cur = 0;
+    size_t total = 0;
+    const int CHUNK_SIZE = 1 << 16u;
+
+    while (total < len) {
+        int n = recv(s, (char *) buf + cur, CHUNK_SIZE, 0);
+        if (n < 0)
+            break;
+
+        total += n;
+    }
+
+    return total;
+}
+
+int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
+    // open socket
+    int sock;
+    int ret;
+    if ((ret = get_socket()) != kErrorSuccess)
+        return ret;
+
+    // send request
+    struct {
+        int32_t version, cw, ch, cd, x, z, seed;
+    } req;
+
+    int kVersion = 1;
+    req.version = kVersion; // TODO proper version
+    req.cw = kChunkWidth;
+    req.ch = kChunkHeight;
+    req.cd = kChunkDepth;
+    ChunkId_deconstruct(chunk_id, req.x, req.z);
+    req.seed = 10; // TODO add field to igenerator
+
+    int32_t buf[kBlocksPerChunk] = {0};
+    size_t n_expected = kBlocksPerChunk * sizeof(int32_t);
+    size_t n;
+    n = send(sock, &req, sizeof(req), 0);
+    log("sent %d/%d bytes", n, sizeof(req));
+
+    // read resp
+    n = recv_all(sock, buf, n_expected);
+    log("recvd %d/%d bytes", n, n_expected);
+
+    if (n != n_expected) {
+        return 5; // TODO error
+    }
+
+    for (int i = 0; i < kBlocksPerChunk; i++) {
+        Block &b = terrain_out[terrain_out.unflatten(i)];
+        b.type_ = static_cast<BlockType>(buf[i]);
+    }
+
+
+    return 0;
+}
+
+int PythonGenerator::get_socket() {
+    if (sock_ == -1) {
+        const int port = 17771;
+
+        struct sockaddr_in server_address;
+        memset(&server_address, 0, sizeof(server_address));
+        server_address.sin_family = AF_INET;
+        inet_pton(AF_INET, "localhost", &server_address.sin_addr);
+        server_address.sin_port = htons(port);
+        if ((sock_ = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+            log("could not create socket: %d", errno);
+            return kErrorIo;
+        }
+
+        if (connect(sock_, (struct sockaddr *) &server_address,
+                    sizeof(server_address)) < 0) {
+            log("could not connect to server: %d", errno);
+            return kErrorIo;
+        }
+
+        log("opened socket!!!!");
+    }
+
+    return kErrorSuccess;
+}
+

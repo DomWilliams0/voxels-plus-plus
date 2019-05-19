@@ -6,6 +6,7 @@
 #include "glm/vec3.hpp"
 #include "chunk.h"
 #include "centre.h"
+#include "loader.h"
 
 enum class ChunkState {
     kUnloaded = 1,
@@ -18,7 +19,7 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
 }
 
 // radius around player to load chunks
-const int kLoadedChunkRadius = 4;
+const int kLoadedChunkRadius = 10;
 
 // chunk map entry
 struct ChunkEntry {
@@ -43,6 +44,8 @@ public:
 
     void tick();
 
+    void clear_all_chunks();
+
 
 private:
     // TODO map of chunk id -> {load state, optional chunk *}
@@ -55,6 +58,8 @@ private:
         glm::vec3 position_;
         glm::vec3 direction_;
     } spawn_;
+
+    WorldLoader loader_;
 
     void update_active_chunks();
 

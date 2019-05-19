@@ -128,6 +128,8 @@ void Game::handle_keypress(SDL_Keycode key, bool down) {
         running_ = false;
     else if (key == SDLK_y && !down)
         renderer_.toggle_wireframe();
+    else if (key == SDLK_r && !down)
+        world_.clear_all_chunks();
 }
 
 void Game::cleanup() {

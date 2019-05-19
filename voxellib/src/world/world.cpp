@@ -5,7 +5,8 @@
 #include "util.h"
 #include "loader.h"
 
-World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir} {}
+World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir},
+                                                         loader_(50) /* TODO random */ {}
 
 void World::add_loaded_chunk(Chunk *chunk) {
     if (chunk == nullptr || !chunk->loaded()) throw std::runtime_error("chunk is not loaded!");
@@ -32,13 +33,22 @@ void World::tick() {
 
     // find chunks to load and unload based on world centre
     update_active_chunks();
+
+    // load complete chunks
+    Chunk *done_chunk = nullptr;
+    while (loader_.pop_done(done_chunk)) {
+        int x, z;
+        ChunkId_deconstruct(done_chunk->id(), x, z);
+//        log("recv loaded chunk(%d, %d)", x, z);
+        add_loaded_chunk(done_chunk);
+    }
 }
 
 void World::update_active_chunks() {
     ChunkEntry entry;
 
     ChunkId_t centre_chunk;
-    if (!centre_.chunk(centre_chunk)) {
+    if (!centre_.chunk(centre_chunk) && !chunks_.empty()) {
         // centre chunk has not changed, do nothing
         return;
     }
@@ -53,21 +63,8 @@ void World::update_active_chunks() {
 
             // if unloaded, need to load
             if (entry.state == ChunkState::kUnloaded) {
-                // TODO post request to load
-                // do NOT do in this thread!
-
-                log("loading chunk %d, %d", x, z);
-                Chunk *chunk = new Chunk(x, z);
-                int ret;
-                if ((ret = kWorldLoader.load(c, &chunk->terrain_)) != kErrorSuccess) {
-                    log("chunk loading failed: %d", ret);
-                    // TODO actually handle error
-                    delete chunk;
-                } else {
-                    chunk->generate_mesh();
-                    add_loaded_chunk(chunk);
-                }
-
+                // does not block
+                loader_.request_chunk(c);
                 continue;
             }
         }
@@ -84,6 +81,14 @@ void World::find_chunk(ChunkId_t chunk_id, ChunkEntry &out) {
     } else {
         out = it->second;
     }
+}
+
+void World::clear_all_chunks() {
+    for (auto &entry : chunks_) {
+        Chunk *chunk = entry.second.chunk;
+        delete chunk;
+    }
+    chunks_.clear();
 }
 
 

@@ -1,24 +1,22 @@
-#include <error.h>
-#include <util.h>
+#include <boost/asio.hpp>
+#include <boost/thread.hpp>
+#include "error.h"
+#include "util.h"
 #include "loader.h"
 
-WorldLoader kWorldLoader(new DummyGenerator);
-
-static void update_face_visibility(ChunkTerrain *terrain) {
-    Block *b;
+static void update_face_visibility(ChunkTerrain &terrain) {
     glm::ivec3 pos;
     for (int i = 0; i < kBlocksPerChunk; ++i) {
         Chunk::expand_block_index(terrain, i, pos);
-        b = &terrain->operator[](i);
-        FaceVisibility visibility = b->face_visibility_;
+        Block &b = terrain[i];
+        FaceVisibility visibility = b.face_visibility_;
 
-        if (!BlockType_opaque(b->type_)) {
+        if (!BlockType_opaque(b.type_)) {
             // fully visible because transparent
             visibility = kFaceVisibilityAll;
         } else {
             // check each face individually
             glm::ivec3 offset_pos;
-            Block *offset_block;
             for (int j = 0; j < kFaceCount; ++j) {
                 offset_pos = pos; // reset
                 Face face = kFaces[j];
@@ -41,32 +39,57 @@ static void update_face_visibility(ChunkTerrain *terrain) {
                 }
 
                 // inside this chunk, safe to get the block type (rather ugly...)
-                offset_block = &terrain->operator[]({static_cast<unsigned long>(offset_pos.x),
-                                                     static_cast<unsigned long>(offset_pos.y),
-                                                     static_cast<unsigned long>(offset_pos.z)});
+                Block &offset_block = terrain[{static_cast<unsigned long>(offset_pos.x),
+                                               static_cast<unsigned long>(offset_pos.y),
+                                               static_cast<unsigned long>(offset_pos.z)}];
 
-                if (BlockType_opaque(offset_block->type_))
+                if (BlockType_opaque(offset_block.type_))
                     visibility &= ~face_visibility(face); // not visible
                 else
                     visibility |= face_visibility(face); // visible
             }
         }
 
-        b->face_visibility_ = visibility;
+        b.face_visibility_ = visibility;
     }
 
 }
 
 
-int WorldLoader::load(ChunkId_t chunk_id, ChunkTerrain *terrain_out) {
-    // always generate from scratch for now
+WorldLoader::WorldLoader(int seed) : seed(seed), done_(32), pool_() {}
 
-    int ret = generator_->generate(chunk_id, terrain_out);
-    if (ret == kErrorSuccess) {
-        // populate face visibility
-        // TODO this might be populated already, do a check
-        update_face_visibility(terrain_out);
-    }
-    return ret;
+
+void WorldLoader::request_chunk(ChunkId_t chunk_id) {
+    // TODO correct to capture this?
+    boost::asio::post(pool_, [this, chunk_id]() {
+        int x, z;
+        ChunkId_deconstruct(chunk_id, x, z);
+//        log("loading chunk(%d, %d) in requester thread pool", x, z);
+
+        auto chunk = new Chunk(x, z);
+
+        // TODO load from cache/disk too
+        thread_local DummyGenerator gen;
+
+
+        int ret = gen.generate(chunk_id, seed, chunk->terrain_);
+        if (ret == kErrorSuccess) {
+            // finalise terrain
+            // TODO might already be populated, check first
+            update_face_visibility(chunk->terrain_);
+            chunk->generate_mesh();
+
+            // add to done queue
+            bool good = done_.push(chunk);
+            if (!good)
+                log("FAILED TO PUSH");
+        } else {
+            delete chunk;
+        }
+    });
+
 }
 
+bool WorldLoader::pop_done(Chunk *&chunk_out) {
+    return done_.pop(chunk_out);
+}

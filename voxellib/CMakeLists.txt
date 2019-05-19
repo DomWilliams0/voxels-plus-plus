@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(voxellib)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Werror -fno-stack-protector")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Werror -fno-stack-protector -pipe -O0")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 
@@ -56,9 +56,10 @@ include_directories(lib/imgui)
 
 find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system thread)
 
 set(GLM_TEST_ENABLE off)
 add_subdirectory(lib/glm)
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${SOURCES_LIB})
-target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARY} ${GLEW_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${SDL2_LIBRARY} ${GLEW_LIBRARIES} Boost::thread)
 target_include_directories(${PROJECT_NAME} PUBLIC lib/glm lib ${SDL2_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS})

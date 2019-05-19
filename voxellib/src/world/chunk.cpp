@@ -3,6 +3,7 @@
 #include "chunk.h"
 #include "world_renderer.h"
 #include "face.h"
+#include "util.h"
 
 Chunk::Chunk(int32_t x, int32_t z) : x_(x), z_(z) {
 
@@ -10,7 +11,7 @@ Chunk::Chunk(int32_t x, int32_t z) : x_(x), z_(z) {
 
 bool Chunk::loaded() const {
     // TODO what if mesh is empty because its invisible so mesh is 0?
-    return terrain_.size() > 0 && mesh_.mesh_size() > 0;
+    return terrain_.size() > 0 && mesh_.has_mesh();
 }
 
 void Chunk::lazily_init_render_buffers() {
@@ -92,15 +93,15 @@ const Block &Chunk::block_from_index(unsigned long index) const {
     return terrain_[terrain_.unflatten(index)];
 }
 
-void Chunk::expand_block_index(const ChunkTerrain *terrain, int idx, glm::ivec3 &out) {
-    auto coord = terrain->unflatten(idx);
+void Chunk::expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out) {
+    auto coord = terrain.unflatten(idx);
     out[0] = coord[0];
     out[1] = coord[1];
     out[2] = coord[2];
 }
 
 void Chunk::expand_block_index(int idx, glm::ivec3 &out) const {
-    Chunk::expand_block_index(&terrain_, idx, out);
+    Chunk::expand_block_index(terrain_, idx, out);
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {

@@ -9,7 +9,7 @@
 #include "block.h"
 
 const int kChunkWidthShift = 4; // 16
-const int kChunkHeightShift = 4; // 16 TODO change to 10 = 1024
+const int kChunkHeightShift = 6; // 16 TODO change to 10 = 1024
 const int kChunkDepthShift = 4; // 16
 
 const int kChunkWidth = 1 << kChunkWidthShift;
@@ -36,6 +36,8 @@ class ChunkMesh {
 
 public:
     inline int mesh_size() const { return mesh_size_; }
+
+    inline bool has_mesh() const { return mesh_ != nullptr; }
 
 private:
     int *mesh_ = nullptr;
@@ -81,7 +83,7 @@ public:
      */
     static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
 
-    static void expand_block_index(const ChunkTerrain *terrain, int idx, glm::ivec3 &out);
+    static void expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out);
 
 private:
     int32_t x_, z_;
@@ -91,6 +93,8 @@ private:
     ChunkMesh mesh_;
 
     friend class World;
+
+    friend class WorldLoader;
 
     /**
      * Lazy, will only init if not set

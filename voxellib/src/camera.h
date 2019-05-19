@@ -8,7 +8,7 @@
 #include "world/centre.h"
 
 const double kCameraTurnSpeed = 0.001;
-const float kCameraMoveSpeed = 10.0f;
+const float kCameraMoveSpeed = 40.0f;
 
 class CameraState {
 public:

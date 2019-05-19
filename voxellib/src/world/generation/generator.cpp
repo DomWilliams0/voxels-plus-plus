@@ -117,3 +117,54 @@ int PythonGenerator::get_socket() {
     return kErrorSuccess;
 }
 
+#ifndef PROCGEN_BIN
+#error missing PROCGEN_BIN
+#endif
+
+boost::shared_mutex NativeGenerator::kHandleMutex;
+void *NativeGenerator::kHandle;
+generate_t NativeGenerator::kFunc;
+bool NativeGenerator::kDirty;
+
+generate_t NativeGenerator::lookup() {
+    boost::upgrade_lock lock(kHandleMutex);
+    if (kDirty || kFunc == nullptr) {
+        boost::upgrade_to_unique_lock unique_lock(lock);
+
+        if (kHandle != nullptr)
+            dlclose(kHandle);
+
+        kHandle = dlopen(PROCGEN_BIN, RTLD_NOW);
+        if (kHandle == nullptr) {
+            log("failed to dlopen: %s", dlerror());
+            return nullptr;
+        }
+
+        log("dlopened %p", kHandle);
+
+        kFunc = (generate_t) dlsym(kHandle, "generate");
+        if (kFunc == nullptr) {
+            log("failed to dlsym: %s", dlerror());
+        }
+
+        kDirty = false;
+    }
+
+    return kFunc;
+}
+
+int NativeGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
+    int x, z;
+    ChunkId_deconstruct(chunk_id, x, z);
+
+    generate_t gen = lookup();
+    if (gen != nullptr)
+        return gen(x, z, seed, terrain_out);
+
+    return 0;
+}
+
+void NativeGenerator::mark_dirty() {
+    boost::unique_lock<boost::shared_mutex> lock(kHandleMutex);
+    kDirty = true;
+}

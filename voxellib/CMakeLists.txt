@@ -53,10 +53,35 @@ set(SOURCES ${SOURCES}
         )
 include_directories(lib/imgui)
 
+# fastnoise
+#set(SOURCES ${SOURCES}
+#        lib/FastNoiseSIMD/FastNoiseSIMD/ARM/cpu-features.c
+#        lib/FastNoiseSIMD/FastNoiseSIMD/ARM/cpu-features.h
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD.cpp
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD.h
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_avx2.cpp
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_avx512.cpp
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_internal.cpp
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_internal.h
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_neon.cpp
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_sse2.cpp
+#        lib/FastNoiseSIMD/FastNoiseSIMD/FastNoiseSIMD_sse41.cpp
+#        )
+#include_directories(lib/FastNoiseSIMD)
+
+set(SOURCES ${SOURCES}
+        lib/FastNoise/FastNoise.h
+        lib/FastNoise/FastNoise.cpp
+        )
+
 
 find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread)
+
+add_subdirectory(procgen)
+include_directories(procgen/src)
+add_definitions(-DPROCGEN_BIN="${CMAKE_CURRENT_BINARY_DIR}/procgen/libprocgen.so")
 
 set(GLM_TEST_ENABLE off)
 add_subdirectory(lib/glm)

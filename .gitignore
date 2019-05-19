@@ -33,4 +33,5 @@
 *.out
 *.app
 
-cmake-build-debug
+cmake-build-*
+voxellib/src/world/generation/pygen.py

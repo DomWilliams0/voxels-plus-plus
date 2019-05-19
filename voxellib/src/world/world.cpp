@@ -89,6 +89,8 @@ void World::clear_all_chunks() {
         delete chunk;
     }
     chunks_.clear();
+
+    NativeGenerator::mark_dirty();
 }
 
 

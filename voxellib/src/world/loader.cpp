@@ -69,7 +69,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         auto chunk = new Chunk(x, z);
 
         // TODO load from cache/disk too
-        thread_local DummyGenerator gen;
+        thread_local NativeGenerator gen;
 
 
         int ret = gen.generate(chunk_id, seed, chunk->terrain_);

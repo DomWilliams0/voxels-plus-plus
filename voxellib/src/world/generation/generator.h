@@ -27,4 +27,20 @@ private:
 
 };
 
+class NativeGenerator : public IGenerator {
+public:
+    int generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) override;
+
+    static void mark_dirty();
+
+private:
+    static generate_t lookup();
+
+    static boost::shared_mutex kHandleMutex;
+    static bool kDirty;
+    static void *kHandle;
+    static generate_t kFunc;
+};
+
+
 #endif

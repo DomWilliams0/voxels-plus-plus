@@ -61,7 +61,7 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
     // update projection
     {
         float aspect = ((float) window_width) / window_height;
-        auto proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+        auto proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 1000.0f);
 
         int loc = glGetUniformLocation(prog_, "projection");
         glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(proj));

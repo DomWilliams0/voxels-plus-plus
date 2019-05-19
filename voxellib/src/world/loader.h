@@ -21,10 +21,12 @@ public:
      */
     void request_chunk(ChunkId_t chunk_id);
 
+    void unload_chunk(Chunk *chunk);
+
     bool pop_done(Chunk *&chunk_out);
 
 private:
-    int seed;
+    int seed_;
     boost::asio::thread_pool pool_;
     boost::lockfree::stack<Chunk *> done_;
 };

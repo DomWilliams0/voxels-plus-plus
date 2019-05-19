@@ -56,7 +56,7 @@ static void update_face_visibility(ChunkTerrain &terrain) {
 }
 
 
-WorldLoader::WorldLoader(int seed) : seed(seed), done_(32), pool_() {}
+WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), pool_() {}
 
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {
@@ -72,7 +72,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         thread_local NativeGenerator gen;
 
 
-        int ret = gen.generate(chunk_id, seed, chunk->terrain_);
+        int ret = gen.generate(chunk_id, seed_, chunk->terrain_);
         if (ret == kErrorSuccess) {
             // finalise terrain
             // TODO might already be populated, check first
@@ -92,4 +92,9 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
 
 bool WorldLoader::pop_done(Chunk *&chunk_out) {
     return done_.pop(chunk_out);
+}
+
+void WorldLoader::unload_chunk(Chunk *chunk) {
+    // TODO add to cache
+    delete chunk;
 }

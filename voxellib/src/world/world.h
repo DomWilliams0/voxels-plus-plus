@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include "glm/vec3.hpp"
 #include "chunk.h"
 #include "centre.h"
@@ -51,6 +52,7 @@ private:
     // TODO map of chunk id -> {load state, optional chunk *}
     // TODO use a hashset keyed with chunk id
     ChunkMap chunks_;
+    std::unordered_set<ChunkId_t> per_frame_chunks_; // used to find which chunks should be unloaded
 
     WorldCentre centre_;
 

@@ -53,12 +53,19 @@ void World::update_active_chunks() {
         return;
     }
 
+    per_frame_chunks_.clear();
+
     int centre_x, centre_z;
     ChunkId_deconstruct(centre_chunk, centre_x, centre_z);
 
+    // make sure all chunks in range are loaded/loading
     for (int x = centre_x - kLoadedChunkRadius; x <= centre_x + kLoadedChunkRadius; ++x) {
         for (int z = centre_z - kLoadedChunkRadius; z <= centre_z + kLoadedChunkRadius; ++z) {
             ChunkId_t c = ChunkId(x, z);
+
+            // mark this chunk as in range
+            per_frame_chunks_.insert(c);
+
             find_chunk(c, entry);
 
             // if unloaded, need to load
@@ -70,7 +77,19 @@ void World::update_active_chunks() {
         }
     }
 
-    // TODO unload unneeded chunks
+    // unload chunks out of range
+    for (auto it = chunks_.begin(); it != chunks_.end();) {
+        if (it->second.state == ChunkState::kLoaded && per_frame_chunks_.find(it->first) == per_frame_chunks_.end()) {
+            // loaded and not in range
+            Chunk *chunk = it->second.chunk;
+            loader_.unload_chunk(chunk); // takes ownership
+
+            it = chunks_.erase(it);
+        } else {
+            it++;
+        }
+    }
+
 }
 
 void World::find_chunk(ChunkId_t chunk_id, ChunkEntry &out) {

@@ -19,9 +19,6 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
     return cs == ChunkState::kLoaded; // TODO or mesh being updated
 }
 
-// radius around player to load chunks
-const int kLoadedChunkRadius = 10;
-
 // chunk map entry
 struct ChunkEntry {
     ChunkState state;

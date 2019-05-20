@@ -2,6 +2,7 @@
 #define VOXELS_BLOCK_H
 
 #include "face.h"
+#include "constants.h"
 
 enum class BlockType {
     kAir = 0,
@@ -20,15 +21,6 @@ const static long kBlockTypeColours[] = {
 inline bool BlockType_opaque(BlockType bt) {
     return bt != BlockType::kAir;
 }
-
-
-/**
- * blocks per m
- */
-const int kBlockScale = 2;
-
-// /2 again because radius, not diameter
-const float kBlockRadius = 1.f / kBlockScale / 2.f;
 
 struct Block {
     BlockType type_;

@@ -7,9 +7,6 @@
 #include "glm/gtc/quaternion.hpp"
 #include "world/centre.h"
 
-const double kCameraTurnSpeed = 0.001;
-const float kCameraMoveSpeed = 40.0f;
-
 class CameraState {
 public:
     CameraState() = default;

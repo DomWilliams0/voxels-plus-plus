@@ -6,6 +6,7 @@
 
 const char *kGlslVersion = "#version 330 core";
 
+
 static void init_logging() {
     loguru::add_file("voxels.log", loguru::FileMode::Truncate, loguru::Verbosity_MAX);
 }

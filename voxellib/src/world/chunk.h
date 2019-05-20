@@ -7,16 +7,7 @@
 
 #include "multidim_grid.hpp"
 #include "block.h"
-
-const int kChunkWidthShift = 4; // 16
-const int kChunkHeightShift = 6; // 16 TODO change to 10 = 1024
-const int kChunkDepthShift = 4; // 16
-
-const int kChunkWidth = 1 << kChunkWidthShift;
-const int kChunkHeight = 1 << kChunkHeightShift;
-const int kChunkDepth = 1 << kChunkDepthShift;
-
-const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
+#include "constants.h"
 
 
 typedef uint64_t ChunkId_t;

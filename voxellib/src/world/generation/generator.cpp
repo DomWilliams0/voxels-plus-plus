@@ -72,11 +72,11 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
     size_t n_expected = kBlocksPerChunk * sizeof(int32_t);
     size_t n;
     n = send(sock, &req, sizeof(req), 0);
-    log("sent %d/%d bytes", n, sizeof(req));
+    DLOG_F(INFO, "sent %d/%d bytes", n, sizeof(req));
 
     // read resp
     n = recv_all(sock, buf, n_expected);
-    log("recvd %d/%d bytes", n, n_expected);
+    LOG_F(INFO, "recvd %d/%d bytes", n, n_expected);
 
     if (n != n_expected) {
         return 5; // TODO error
@@ -101,17 +101,17 @@ int PythonGenerator::get_socket() {
         inet_pton(AF_INET, "localhost", &server_address.sin_addr);
         server_address.sin_port = htons(port);
         if ((sock_ = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
-            log("could not create socket: %d", errno);
+            LOG_F(ERROR, "could not create socket: %d", errno);
             return kErrorIo;
         }
 
         if (connect(sock_, (struct sockaddr *) &server_address,
                     sizeof(server_address)) < 0) {
-            log("could not connect to server: %d", errno);
+            LOG_F(ERROR, "could not connect to server: %d", errno);
             return kErrorIo;
         }
 
-        log("opened socket!!!!");
+        DLOG_F(INFO, "opened socket!!!!");
     }
 
     return kErrorSuccess;
@@ -126,7 +126,7 @@ void *NativeGenerator::kHandle;
 generate_t NativeGenerator::kFunc;
 bool NativeGenerator::kDirty;
 
-generate_t NativeGenerator::lookup() {
+int NativeGenerator::ensure_handle() {
     boost::upgrade_lock lock(kHandleMutex);
     if (kDirty || kFunc == nullptr) {
         boost::upgrade_to_unique_lock unique_lock(lock);
@@ -136,32 +136,32 @@ generate_t NativeGenerator::lookup() {
 
         kHandle = dlopen(PROCGEN_BIN, RTLD_NOW);
         if (kHandle == nullptr) {
-            log("failed to dlopen: %s", dlerror());
-            return nullptr;
+            LOG_F(ERROR, "failed to dlopen: %s", dlerror());
+            return kErrorDl;
         }
-
-        log("dlopened %p", kHandle);
 
         kFunc = (generate_t) dlsym(kHandle, "generate");
         if (kFunc == nullptr) {
-            log("failed to dlsym: %s", dlerror());
+            LOG_F(ERROR, "failed to dlsym: %s", dlerror());
+            return kErrorDl;
         }
 
+        LOG_F(INFO, "reloaded native generator");
         kDirty = false;
     }
 
-    return kFunc;
+    return kErrorSuccess;
 }
 
 int NativeGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
     int x, z;
     ChunkId_deconstruct(chunk_id, x, z);
 
-    generate_t gen = lookup();
-    if (gen != nullptr)
-        return gen(x, z, seed, terrain_out);
+    int ret;
+    if ((ret = ensure_handle()) != kErrorSuccess)
+        return ret;
 
-    return 0;
+    return kFunc(x, z, seed, terrain_out);
 }
 
 void NativeGenerator::mark_dirty() {

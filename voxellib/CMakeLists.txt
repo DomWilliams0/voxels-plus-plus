@@ -15,6 +15,9 @@ set(SOURCES ${SOURCES} lib/FastNoise/FastNoise.h lib/FastNoise/FastNoise.cpp)
 # glm
 add_subdirectory(lib/glm EXCLUDE_FROM_ALL)
 
+# logging
+set(SOURCES ${SOURCES} lib/loguru/loguru.hpp lib/loguru/loguru.cpp)
+
 # procgen
 add_subdirectory(procgen)
 add_compile_definitions(${PROJECT_NAME} PROCGEN_BIN="${procgen_BINARY_DIR}/libprocgen.so")

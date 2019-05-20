@@ -17,7 +17,7 @@ static char *read_shader_source(const char *filename) {
     FILE *f = fopen(filename, "r");
 
     if (!f) {
-        log("failed to open shader '%s'", filename);
+        LOG_F(ERROR, "failed to open shader '%s'", filename);
         return nullptr;
     }
 
@@ -33,14 +33,14 @@ static char *read_shader_source(const char *filename) {
     // alloc buffer
     buf = static_cast<char *>(calloc(len + 1, sizeof(char)));
     if (!buf) {
-        log("failed to allocate %ld bytes for shader", len);
+        LOG_F(ERROR, "failed to allocate %ld bytes for shader", len);
         goto cleanup;
     }
 
     // read
     read = fread(buf, sizeof(char), len, f);
     if (read != len) {
-        log("failed to read shader: read %ld/%ld", read, len);
+        LOG_F(ERROR, "failed to read shader: read %ld/%ld", read, len);
         free(buf);
         buf = nullptr;
     }
@@ -67,10 +67,10 @@ int load_shader(const char *filename, int type) {
 
             char *log_str = static_cast<char *>(calloc(sizeof(char), log_len + 1));
             if (!log_str) {
-                log("failed to alloc log buffer while failing to load shader, oh dear");
+                LOG_F(ERROR, "failed to alloc log buffer while failing to load shader, oh dear");
             } else {
                 glGetShaderInfoLog(shader, log_len, nullptr, log_str);
-                log("failed to compile shader: %s", log_str);
+                LOG_F(ERROR, "failed to compile shader: %s", log_str);
                 free(log_str);
 
             }
@@ -89,7 +89,7 @@ int load_program(GLuint *prog_out, const char *vertex_path, const char *fragment
     int frag = load_shader(fragment_path, GL_FRAGMENT_SHADER);
 
     if (vert == 0 || frag == 0) {
-        log("failed to load shaders");
+        LOG_F(ERROR, "failed to load shaders");
         return kErrorShaderLoad;
     }
 
@@ -102,7 +102,7 @@ int load_program(GLuint *prog_out, const char *vertex_path, const char *fragment
     int link_status;
     glGetProgramiv(prog, GL_LINK_STATUS, &link_status);
     if (link_status == GL_FALSE) {
-        log("failed to link program");
+        LOG_F(ERROR, "failed to link program");
         return kErrorShaderLoad;
     }
 

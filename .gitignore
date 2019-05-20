@@ -36,3 +36,4 @@
 cmake-build-*
 voxellib/src/world/generation/pygen.py
 CMakeFiles
+voxels.log

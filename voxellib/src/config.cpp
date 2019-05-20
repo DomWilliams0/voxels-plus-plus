@@ -90,12 +90,12 @@ namespace config {
 
         // thread workers
         kTerrainThreadWorkers = thread_count(tree, "terrain.threads");
-        log("config: terrain.threads == %d", kTerrainThreadWorkers);
+        LOG_F(INFO, "config: terrain.threads == %d", kTerrainThreadWorkers);
 
         // generator
         std::string str;
         kGenType = generator(tree, str);
-        log("config: terrain.generator == %s", str.c_str());
+        LOG_F(INFO, "config: terrain.generator == %s", str.c_str());
     }
 
 }

@@ -17,7 +17,7 @@ int WorldRenderer::init(World *world) {
     // init glew
     GLenum ret_gl;
     if ((ret_gl = glewInit()) != GLEW_OK) {
-        log("glewInit failed: %s", glewGetErrorString(ret_gl));
+        LOG_F(ERROR, "glewInit failed: %s", glewGetErrorString(ret_gl));
         return kErrorGlew;
     }
 

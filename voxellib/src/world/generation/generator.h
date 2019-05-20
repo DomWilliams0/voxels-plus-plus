@@ -34,7 +34,7 @@ public:
     static void mark_dirty();
 
 private:
-    static generate_t lookup();
+    static int ensure_handle();
 
     static boost::shared_mutex kHandleMutex;
     static bool kDirty;

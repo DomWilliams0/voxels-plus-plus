@@ -65,14 +65,13 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     boost::asio::post(pool_, [this, chunk_id]() {
         int x, z;
         ChunkId_deconstruct(chunk_id, x, z);
-//        log("loading chunk(%d, %d) in requester thread pool", x, z);
+//        DLOG_F(INFO, "about to load chunk(%d, %d)", x, z);
 
         auto chunk = new Chunk(x, z);
 
         // TODO load from cache/disk too
         // TODO delete when?
         thread_local IGenerator *gen = config::new_generator();
-
 
         int ret = gen->generate(chunk_id, seed_, chunk->terrain_);
         if (ret == kErrorSuccess) {
@@ -82,12 +81,14 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
             chunk->generate_mesh();
 
             // add to done queue
-            bool good = done_.push(chunk);
-            if (!good)
-                log("FAILED TO PUSH");
-        } else {
-            delete chunk;
+            if (done_.push(chunk))
+                return;
+
+            LOG_F(WARNING, "failed to push complete chunk to done queue!");
         }
+
+        LOG_F(WARNING, "failed to generate chunk(%d, %d) with seed %d: %d", x, z, seed_, ret);
+        delete chunk;
     });
 
 }

@@ -2,12 +2,19 @@
 #include "error.h"
 #include "util.h"
 #include "camera.h"
+#include "loguru/loguru.hpp"
 
 const char *kGlslVersion = "#version 330 core";
 
+static void init_logging() {
+    loguru::add_file("voxels.log", loguru::FileMode::Truncate, loguru::Verbosity_MAX);
+}
+
 int Game::run() {
+    init_logging();
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        log("failed to init SDL: %s", SDL_GetError());
+        LOG_F(ERROR, "failed to init SDL: %s", SDL_GetError());
         return kErrorSdl;
     }
 
@@ -24,7 +31,7 @@ int Game::run() {
     if ((window_ = SDL_CreateWindow("OpenGL",
                                     SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                     width, height, SDL_WINDOW_OPENGL)) == nullptr) {
-        log("failed to create window: %s", SDL_GetError());
+        LOG_F(ERROR, "failed to create window: %s", SDL_GetError());
         return kErrorSdl;
     }
 

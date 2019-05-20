@@ -3,6 +3,7 @@
 #include "error.h"
 #include "util.h"
 #include "loader.h"
+#include "config.h"
 
 static void update_face_visibility(ChunkTerrain &terrain) {
     glm::ivec3 pos;
@@ -56,7 +57,7 @@ static void update_face_visibility(ChunkTerrain &terrain) {
 }
 
 
-WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), pool_(5) {}
+WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), pool_(config::kTerrainThreadWorkers) {}
 
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {
@@ -69,10 +70,11 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         auto chunk = new Chunk(x, z);
 
         // TODO load from cache/disk too
-        thread_local NativeGenerator gen;
+        // TODO delete when?
+        thread_local IGenerator *gen = config::new_generator();
 
 
-        int ret = gen.generate(chunk_id, seed_, chunk->terrain_);
+        int ret = gen->generate(chunk_id, seed_, chunk->terrain_);
         if (ret == kErrorSuccess) {
             // finalise terrain
             // TODO might already be populated, check first

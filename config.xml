@@ -1,0 +1,4 @@
+<terrain>
+	<generator>noise</generator>
+	<threads>1</threads>
+</terrain>

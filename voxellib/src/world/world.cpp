@@ -44,6 +44,46 @@ void World::tick() {
     }
 }
 
+static const int kLoadedChunkRadiusCoordCount = 2 * ((2 * kLoadedChunkRadius) + 1) * ((2 + kLoadedChunkRadius) + 1);
+
+constexpr std::array<int, kLoadedChunkRadiusCoordCount> mk_coord_spiral() {
+    auto array = std::array<int, kLoadedChunkRadiusCoordCount>();
+
+    int layer = 1, leg = 0, x = 0, z = 0;
+    for (int i = 0; i < kLoadedChunkRadiusCoordCount / 2; ++i) {
+        // write coord out
+        array[(i * 2) + 0] = x;
+        array[(i * 2) + 1] = z;
+
+        // advance in spiral
+        switch (leg) {
+            case 0:
+                ++x;
+                if (x == layer) ++leg;
+                break;
+            case 1:
+                ++z;
+                if (z == layer) ++leg;
+                break;
+            case 2:
+                --x;
+                if (-x == layer) ++leg;
+                break;
+            case 3:
+                --z;
+                if (-z == layer) {
+                    leg = 0;
+                    ++layer;
+                }
+                break;
+        }
+    }
+
+    return array;
+}
+
+constexpr std::array<int, kLoadedChunkRadiusCoordCount> kLoadedChunkRadiusSpiral = mk_coord_spiral();
+
 void World::update_active_chunks() {
     ChunkEntry entry;
 
@@ -59,21 +99,23 @@ void World::update_active_chunks() {
     ChunkId_deconstruct(centre_chunk, centre_x, centre_z);
 
     // make sure all chunks in range are loaded/loading
-    for (int x = centre_x - kLoadedChunkRadius; x <= centre_x + kLoadedChunkRadius; ++x) {
-        for (int z = centre_z - kLoadedChunkRadius; z <= centre_z + kLoadedChunkRadius; ++z) {
-            ChunkId_t c = ChunkId(x, z);
+    // iterate in outward spiral
+    for (int i = 0; i < kLoadedChunkRadiusCoordCount; i += 2) {
+        int x = centre_x - kLoadedChunkRadiusSpiral[i + 0];
+        int z = centre_z - kLoadedChunkRadiusSpiral[i + 1];
 
-            // mark this chunk as in range
-            per_frame_chunks_.insert(c);
+        ChunkId_t c = ChunkId(x, z);
 
-            find_chunk(c, entry);
+        // mark this chunk as in range
+        per_frame_chunks_.insert(c);
 
-            // if unloaded, need to load
-            if (entry.state == ChunkState::kUnloaded) {
-                // does not block
-                loader_.request_chunk(c);
-                continue;
-            }
+        find_chunk(c, entry);
+
+        // if unloaded, need to load
+        if (entry.state == ChunkState::kUnloaded) {
+            // does not block
+            loader_.request_chunk(c);
+            continue;
         }
     }
 

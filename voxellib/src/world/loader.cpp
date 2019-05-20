@@ -56,7 +56,7 @@ static void update_face_visibility(ChunkTerrain &terrain) {
 }
 
 
-WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), pool_() {}
+WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), pool_(5) {}
 
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {

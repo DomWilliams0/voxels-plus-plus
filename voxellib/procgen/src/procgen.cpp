@@ -1,7 +1,7 @@
-#include <util.h>
 #include <boost/algorithm/clamp.hpp>
 #include "FastNoise/FastNoise.h"
 #include "procgen.h"
+#include "util.h"
 
 static FastNoise noise_(10);
 

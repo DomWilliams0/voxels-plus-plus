@@ -9,8 +9,6 @@
 
 #include <SDL2/SDL.h>
 
-const char *kGlslVersion = "#version 330 core";
-
 class Game {
 public:
     explicit Game(World &world) : world_(world) {}

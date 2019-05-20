@@ -1,7 +1,5 @@
-#include "game.h"
+#include "game_entry.h"
 
 int main() {
-    World world({0, 2, 0});
-    Game game(world);
-    return game.run();
+    return run_game();
 }

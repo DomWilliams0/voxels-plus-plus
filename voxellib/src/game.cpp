@@ -3,6 +3,8 @@
 #include "util.h"
 #include "camera.h"
 
+const char *kGlslVersion = "#version 330 core";
+
 int Game::run() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         log("failed to init SDL: %s", SDL_GetError());

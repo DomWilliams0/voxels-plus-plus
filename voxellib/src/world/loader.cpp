@@ -72,7 +72,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
 
     ChunkMeshRaw *mesh = mesh_pool_.construct();
     Chunk *chunk = chunk_pool_.construct(x,z,mesh);
-    LOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
+    DLOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
 
     // TODO correct to capture this?
     boost::asio::post(pool_, [this, chunk_id, mesh, chunk, x, z]() {
@@ -118,7 +118,7 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
 void WorldLoader::clear_garbage() {
     garbage_.consume_all([this](Chunk *c) {
         ChunkMeshRaw *mesh = c->steal_mesh();
-        LOG_F(INFO, "deallocating mesh %p", mesh);
+        DLOG_F(INFO, "deallocating mesh %p", mesh);
         if (mesh != nullptr)
             mesh_pool_.destroy(mesh);
         chunk_pool_.destroy(c);

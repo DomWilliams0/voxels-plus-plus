@@ -88,7 +88,7 @@ void Chunk::populate_mesh() {
     }
 
     mesh_.mesh_size_ = out_idx;
-    LOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
+    DLOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
 }
 
 const Block &Chunk::block_from_index(unsigned long index) const {

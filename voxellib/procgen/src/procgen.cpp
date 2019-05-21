@@ -3,7 +3,7 @@
 #include "procgen.h"
 #include "util.h"
 
-static FastNoise noise_(10);
+static thread_local FastNoise noise_(10);
 
 int __attribute__((constructor)) init() {
     noise_.SetNoiseType(FastNoise::NoiseType::Perlin);

@@ -179,3 +179,6 @@ bool World::RenderableChunkIterator::next(Chunk **out) {
 }
 
 
+World::~World() {
+    clear_all_chunks();
+}

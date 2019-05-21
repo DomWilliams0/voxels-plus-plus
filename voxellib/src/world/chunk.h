@@ -31,12 +31,14 @@ class ChunkMesh {
 public:
     ChunkMesh(ChunkMeshRaw *mesh);
 
+    ~ChunkMesh();
+
     inline int mesh_size() const { return mesh_size_; }
 
     inline bool has_mesh() const { return mesh_ != nullptr; }
 
     // takes ownership of mesh, sets field to null
-    ChunkMeshRaw * steal_mesh();
+    ChunkMeshRaw *steal_mesh();
 
 private:
     ChunkMeshRaw *mesh_;
@@ -76,7 +78,7 @@ public:
 
     inline int vertex_count() const { return mesh_.mesh_size_; }
 
-    inline ChunkMeshRaw * steal_mesh() { return mesh_.steal_mesh(); }
+    inline ChunkMeshRaw *steal_mesh() { return mesh_.steal_mesh(); }
 
     /**
      *

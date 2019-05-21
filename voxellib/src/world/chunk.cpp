@@ -126,8 +126,21 @@ bool WorldCentre::chunk(ChunkId_t &chunk_out) {
 
 ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh) {}
 
-ChunkMeshRaw * ChunkMesh::steal_mesh() {
+ChunkMeshRaw *ChunkMesh::steal_mesh() {
     auto tmp = mesh_;
     mesh_ = nullptr;
     return tmp;
+}
+
+ChunkMesh::~ChunkMesh() {
+    if (vao_ != 0) {
+        glDeleteVertexArrays(1, &vao_);
+        vao_ = 0;
+    }
+
+    if (vbo_ != 0) {
+        glDeleteBuffers(1, &vbo_);
+        vbo_ = 0;
+    }
+
 }

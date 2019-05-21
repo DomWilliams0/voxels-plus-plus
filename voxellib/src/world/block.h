@@ -4,7 +4,7 @@
 #include "face.h"
 #include "constants.h"
 
-enum class BlockType {
+enum class BlockType : int8_t {
     kAir = 0,
     kGrass,
     kStone,

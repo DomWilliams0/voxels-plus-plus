@@ -42,15 +42,16 @@ void World::tick() {
 //        log("recv loaded chunk(%d, %d)", x, z);
         add_loaded_chunk(done_chunk);
     }
+
+    // free unloaded chunks
+    loader_.clear_garbage();
 }
 
-static const int kLoadedChunkRadiusCoordCount = 2 * ((2 * kLoadedChunkRadius) + 1) * ((2 + kLoadedChunkRadius) + 1);
-
-constexpr std::array<int, kLoadedChunkRadiusCoordCount> mk_coord_spiral() {
-    auto array = std::array<int, kLoadedChunkRadiusCoordCount>();
+constexpr std::array<int, kLoadedChunkRadiusChunkCount * 2> mk_coord_spiral() {
+    auto array = std::array<int, kLoadedChunkRadiusChunkCount * 2>();
 
     int layer = 1, leg = 0, x = 0, z = 0;
-    for (int i = 0; i < kLoadedChunkRadiusCoordCount / 2; ++i) {
+    for (int i = 0; i < kLoadedChunkRadiusChunkCount; ++i) {
         // write coord out
         array[(i * 2) + 0] = x;
         array[(i * 2) + 1] = z;
@@ -82,7 +83,7 @@ constexpr std::array<int, kLoadedChunkRadiusCoordCount> mk_coord_spiral() {
     return array;
 }
 
-constexpr std::array<int, kLoadedChunkRadiusCoordCount> kLoadedChunkRadiusSpiral = mk_coord_spiral();
+constexpr std::array<int, kLoadedChunkRadiusChunkCount * 2> kLoadedChunkRadiusSpiral = mk_coord_spiral();
 
 void World::update_active_chunks() {
     ChunkEntry entry;
@@ -100,7 +101,7 @@ void World::update_active_chunks() {
 
     // make sure all chunks in range are loaded/loading
     // iterate in outward spiral
-    for (int i = 0; i < kLoadedChunkRadiusCoordCount; i += 2) {
+    for (int i = 0; i < kLoadedChunkRadiusChunkCount * 2; i += 2) {
         int x = centre_x - kLoadedChunkRadiusSpiral[i + 0];
         int z = centre_z - kLoadedChunkRadiusSpiral[i + 1];
 
@@ -147,7 +148,7 @@ void World::find_chunk(ChunkId_t chunk_id, ChunkEntry &out) {
 void World::clear_all_chunks() {
     for (auto &entry : chunks_) {
         Chunk *chunk = entry.second.chunk;
-        delete chunk;
+        loader_.unload_chunk(chunk);
     }
     chunks_.clear();
 

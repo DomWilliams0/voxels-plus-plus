@@ -80,7 +80,7 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
         // enable attributes
         {
             size_t word_size = sizeof(float);
-            size_t stride = kChunkMeshWordsPerInstance * word_size;
+            size_t stride = kChunkMeshWordsPerVertexInstance * word_size;
 
             // 0: pos
             glEnableVertexAttribArray(0);

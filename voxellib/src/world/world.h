@@ -33,6 +33,7 @@ class World {
 public:
     World(glm::vec3 spawn_pos = {0, 0, 0}, glm::vec3 spawn_dir = {1, 0, 0});
 
+
     /**
      * @param chunk Must have terrain and mesh fully loaded
      */

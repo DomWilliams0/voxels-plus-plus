@@ -7,6 +7,7 @@
 
 #include "world.h"
 #include "block.h"
+#include "constants.h"
 #include "error.h"
 
 extern int window_width;

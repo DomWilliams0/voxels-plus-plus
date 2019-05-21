@@ -2,6 +2,7 @@
 #define VOXELS_CHUNK_H
 
 #include <cstdint>
+#include <array>
 #include <GL/gl.h>
 #include "glm/vec3.hpp"
 
@@ -23,15 +24,22 @@ inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
     z = c_id & ((1L << 32) - 1);
 }
 
+typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
+
 class ChunkMesh {
 
 public:
+    ChunkMesh(ChunkMeshRaw *mesh);
+
     inline int mesh_size() const { return mesh_size_; }
 
     inline bool has_mesh() const { return mesh_ != nullptr; }
 
+    // takes ownership of mesh, sets field to null
+    ChunkMeshRaw * steal_mesh();
+
 private:
-    int *mesh_ = nullptr;
+    ChunkMeshRaw *mesh_;
     unsigned int mesh_size_ = 0;
 
     GLuint vao_ = 0, vbo_ = 0;
@@ -47,9 +55,10 @@ public:
      * @param x Chunk world x coord
      * @param z Chunk world z coord
      */
-    Chunk(int32_t x, int32_t z);
+    Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh);
 
-    inline ChunkId_t id() const { return ChunkId(x_, z_); }
+
+    inline ChunkId_t id() const { return id_; }
 
     inline GLuint vao() const { return mesh_.vao_; }
 
@@ -67,6 +76,8 @@ public:
 
     inline int vertex_count() const { return mesh_.mesh_size_; }
 
+    inline ChunkMeshRaw * steal_mesh() { return mesh_.steal_mesh(); }
+
     /**
      *
      * @param block_pos Global block pos
@@ -77,7 +88,7 @@ public:
     static void expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out);
 
 private:
-    int32_t x_, z_;
+    ChunkId_t id_;
 
     // TODO subchunks
     ChunkTerrain terrain_; // TODO move to a special heap instead of being inline
@@ -92,7 +103,7 @@ private:
      */
     void lazily_init_render_buffers();
 
-    void generate_mesh();
+    void populate_mesh();
 
     const Block &block_from_index(unsigned long index) const;
 

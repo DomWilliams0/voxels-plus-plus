@@ -19,7 +19,7 @@ int generate(int chunk_x, int chunk_z, int seed, ChunkTerrain &terrain_out) {
         for (unsigned int z = 0; z < kChunkDepth; z++) {
             int nx = (chunk_x * kChunkWidth) + x;
             int nz = (chunk_z * kChunkDepth) + z;
-            double n = noise_.GetPerlin(nx / scale, seed, nz / scale);
+            double n = noise_.GetPerlin(nx / scale, seed, nz / scale) + 0.7;
 
             int top = (int) boost::algorithm::clamp(n * kChunkHeight, 1, kChunkHeight - 1);
             for (unsigned int y = top; y > 0; y--) {
@@ -27,8 +27,6 @@ int generate(int chunk_x, int chunk_z, int seed, ChunkTerrain &terrain_out) {
             }
         }
     }
-
-    terrain_out[{0, 0, 0}] = BlockType::kMarker;
 
     return 0;
 }

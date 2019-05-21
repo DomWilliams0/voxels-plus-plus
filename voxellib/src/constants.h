@@ -25,7 +25,10 @@ const int kChunkDepth = 1 << kChunkDepthShift;
 const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
 
 // radius around player to load chunks
-const int kLoadedChunkRadius = 10;
+const int kLoadedChunkRadius = 8;
+
+const int kLoadedChunkRadiusChunkCount = (2 * kLoadedChunkRadius + 1) * (2 + kLoadedChunkRadius + 1);
+
 
 // as defined in kBlockVertices, 3 for pos
 const int kFloatsPerVertex = 3;
@@ -33,12 +36,14 @@ const int kFloatsPerVertex = 3;
 /**
  * vec3f (pos) + vec4b (colour)
  */
-const int kChunkMeshWordsPerInstance = 3 + 1 /*+ 1*/;
+const int kChunkMeshWordsPerVertexInstance = 3 + 1 /*+ 1*/;
 
 /**
  * 12 triangles
  */
 const int kChunkMeshVerticesPerBlock = 12 * 3;
 
+const int kChunkMeshSize = kBlocksPerChunk * kChunkMeshWordsPerVertexInstance * kChunkMeshWordsPerVertexInstance;
+const int kChunkMeshPoolCount = kLoadedChunkRadiusChunkCount * 2; // large buffer
 
 #endif

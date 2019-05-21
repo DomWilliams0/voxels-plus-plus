@@ -5,7 +5,7 @@
 #include "face.h"
 #include "util.h"
 
-Chunk::Chunk(int32_t x, int32_t z) : x_(x), z_(z) {
+Chunk::Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh) : id_(ChunkId(x, z)), mesh_(mesh) {
 
 }
 
@@ -28,13 +28,14 @@ void Chunk::lazily_init_render_buffers() {
 }
 
 void Chunk::world_offset(glm::ivec3 &out) {
-    out[0] = x_ * kChunkWidth * kBlockRadius * 2;
+    int x, z;
+    ChunkId_deconstruct(id_, x, z);
+    out[0] = x * kChunkWidth * kBlockRadius * 2;
     out[1] = 0;
-    out[2] = z_ * kChunkDepth * kBlockRadius * 2;
+    out[2] = z * kChunkDepth * kBlockRadius * 2;
 }
 
-void Chunk::generate_mesh() {
-    int *buffer = new int[kBlocksPerChunk * kChunkMeshWordsPerInstance * kChunkMeshVerticesPerBlock];
+void Chunk::populate_mesh() {
     glm::ivec3 block_pos;
     size_t out_idx = 0;
 
@@ -70,11 +71,12 @@ void Chunk::generate_mesh() {
                 int v_idx = v * 3;
                 for (int j = 0; j < 3; ++j) {
                     f_or_i.f = verts[v_idx + j] + block_pos[j] * 2 * kBlockRadius;
-                    buffer[out_idx++] = f_or_i.i;
+                    (*mesh_.mesh_)[out_idx++] = f_or_i.i;
                 }
                 // colour
                 int colour = kBlockTypeColours[static_cast<int>(block.type_)];
-                buffer[out_idx++] = colour;
+                (*mesh_.mesh_)[out_idx++] = colour;
+                assert(out_idx < kChunkMeshSize);
 /*
                 // ao
                 char ao_idx = ao_get_vertex(block.ao, face, v);
@@ -85,8 +87,8 @@ void Chunk::generate_mesh() {
         }
     }
 
-    mesh_.mesh_ = buffer;
     mesh_.mesh_size_ = out_idx;
+    LOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
 }
 
 const Block &Chunk::block_from_index(unsigned long index) const {
@@ -119,4 +121,13 @@ bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     chunk_out = current_chunk;
 
     return changed;
+}
+
+
+ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh) {}
+
+ChunkMeshRaw * ChunkMesh::steal_mesh() {
+    auto tmp = mesh_;
+    mesh_ = nullptr;
+    return tmp;
 }

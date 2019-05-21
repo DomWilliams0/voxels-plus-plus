@@ -1,5 +1,5 @@
-#include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <boost/asio/post.hpp>
+#include <boost/pool/object_pool.hpp>
 #include "error.h"
 #include "util.h"
 #include "loader.h"
@@ -57,17 +57,26 @@ static void update_face_visibility(ChunkTerrain &terrain) {
 }
 
 
-WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), pool_(config::kTerrainThreadWorkers) {}
+WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), garbage_(32),
+                                     pool_(config::kTerrainThreadWorkers),
+                                     mesh_pool_(kChunkMeshPoolCount),
+                                     chunk_pool_(kLoadedChunkRadiusChunkCount) {
+}
 
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {
-    // TODO correct to capture this?
-    boost::asio::post(pool_, [this, chunk_id]() {
-        int x, z;
-        ChunkId_deconstruct(chunk_id, x, z);
-//        DLOG_F(INFO, "about to load chunk(%d, %d)", x, z);
+    // TODO decide here if we are loading from cache, so we only alloc a new chunk if necessary
+    // don't want to allocate from memory pool from worker thread
+    int x, z;
+    ChunkId_deconstruct(chunk_id, x, z);
 
-        auto chunk = new Chunk(x, z);
+    ChunkMeshRaw *mesh = mesh_pool_.construct();
+    Chunk *chunk = chunk_pool_.construct(x,z,mesh);
+    LOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
+
+    // TODO correct to capture this?
+    boost::asio::post(pool_, [this, chunk_id, mesh, chunk, x, z]() {
+//        DLOG_F(INFO, "about to load chunk(%d, %d)", x, z);
 
         // TODO load from cache/disk too
         // TODO delete when?
@@ -78,26 +87,41 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
             // finalise terrain
             // TODO might already be populated, check first
             update_face_visibility(chunk->terrain_);
-            chunk->generate_mesh();
+            chunk->populate_mesh();
 
             // add to done queue
             if (done_.push(chunk))
                 return;
 
-            LOG_F(WARNING, "failed to push complete chunk to done queue!");
+            LOG_F(WARNING, "failed to push complete chunk(%d, %d) to done queue!", x, z);
         }
 
         LOG_F(WARNING, "failed to generate chunk(%d, %d) with seed %d: %d", x, z, seed_, ret);
-        delete chunk;
+        unload_chunk(chunk, false);
     });
 
 }
+
 
 bool WorldLoader::pop_done(Chunk *&chunk_out) {
     return done_.pop(chunk_out);
 }
 
-void WorldLoader::unload_chunk(Chunk *chunk) {
-    // TODO add to cache
-    delete chunk;
+void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
+    if (chunk == nullptr)
+        return;
+
+    // TODO add to cache if param set
+    garbage_.push(chunk);
+}
+
+void WorldLoader::clear_garbage() {
+    garbage_.consume_all([this](Chunk *c) {
+        ChunkMeshRaw *mesh = c->steal_mesh();
+        LOG_F(INFO, "deallocating mesh %p", mesh);
+        if (mesh != nullptr)
+            mesh_pool_.destroy(mesh);
+        chunk_pool_.destroy(c);
+    });
+
 }

@@ -3,6 +3,7 @@
 
 #include <boost/asio/thread_pool.hpp>
 #include <boost/lockfree/stack.hpp>
+#include <boost/pool/object_pool.hpp>
 #include "world/generation/generator.h"
 #include "chunk.h"
 
@@ -14,21 +15,26 @@ class WorldLoader {
 public:
     explicit WorldLoader(int seed);
 
-
     /**
      * Will either load from disk, load from chunk cache or generate from scratch
      * Posts request and does not block
      */
     void request_chunk(ChunkId_t chunk_id);
 
-    void unload_chunk(Chunk *chunk);
+    void unload_chunk(Chunk *chunk, bool allow_cache = true);
 
     bool pop_done(Chunk *&chunk_out);
+
+    void clear_garbage();
 
 private:
     int seed_;
     boost::asio::thread_pool pool_;
     boost::lockfree::stack<Chunk *> done_;
+    boost::lockfree::stack<Chunk *> garbage_;
+
+    boost::object_pool<ChunkMeshRaw> mesh_pool_;
+    boost::object_pool<Chunk> chunk_pool_;
 };
 
 #endif

@@ -72,11 +72,11 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
     size_t n_expected = kBlocksPerChunk * sizeof(int32_t);
     size_t n;
     n = send(sock, &req, sizeof(req), 0);
-    DLOG_F(INFO, "sent %d/%d bytes", n, sizeof(req));
+    DLOG_F(INFO, "sent %zu/%lu bytes", n, sizeof(req));
 
     // read resp
     n = recv_all(sock, buf, n_expected);
-    LOG_F(INFO, "recvd %d/%d bytes", n, n_expected);
+    LOG_F(INFO, "recvd %zu/%zu bytes", n, n_expected);
 
     if (n != n_expected) {
         return 5; // TODO error

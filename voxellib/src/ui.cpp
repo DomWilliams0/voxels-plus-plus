@@ -5,6 +5,7 @@
 #include "glm/glm.hpp"
 #include "ui.h"
 #include "camera.h"
+#include "world/world.h"
 
 void Ui::init(SDL_Window *window, const char *glsl_version, SDL_GLContext *gl_context) {
     window_ = window;
@@ -29,16 +30,17 @@ void Ui::init(SDL_Window *window, const char *glsl_version, SDL_GLContext *gl_co
     pos_str_.reserve(64);
     chunk_str_.reserve(64);
     dir_str_.reserve(64);
+    chunk_rad_str_.resize(64, '\0');
 }
 
-void Ui::do_frame(const Camera &camera) {
+void Ui::do_frame(const Camera &camera, const World &world) {
 
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(window_);
     ImGui::NewFrame();
 
-    make_ui(camera);
+    make_ui(camera, world);
 
     // Rendering
     ImGui::Render();
@@ -88,7 +90,7 @@ static void format(const char *prefix, Format format, void *vec, std::string &ou
     ImGui::TextUnformatted(out.c_str());
 }
 
-void Ui::make_ui(const Camera &camera) {
+void Ui::make_ui(const Camera &camera, const World &world) {
     int pos = 10;
     int flags = ImGuiWindowFlags_NoCollapse |
                 ImGuiWindowFlags_NoResize |
@@ -116,6 +118,15 @@ void Ui::make_ui(const Camera &camera) {
     glm::vec2 cam_dir = camera.dir();
     format("Direction: ", kFormatVec2, (void *) &cam_dir, dir_str_);
 
+    // loaded chunks
+    {
+        int chunk_radius = world.loaded_chunk_radius();
+        int chunk_count = world.loaded_chunk_count();
+
+        char *str = chunk_rad_str_.data();
+        snprintf(str, 64, "Loaded chunks: %d (radius %d)", chunk_count, chunk_radius);
+        ImGui::TextUnformatted(str);
+    }
 
     ImGui::End();
 }

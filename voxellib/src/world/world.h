@@ -48,6 +48,9 @@ public:
 
     void tweak_loaded_chunk_radius(int delta);
 
+    inline int loaded_chunk_radius() const { return loader_.loaded_chunk_radius(); }
+    inline int loaded_chunk_count() const { return loader_.loaded_chunk_radius_chunk_count(); }
+
 private:
     // TODO map of chunk id -> {load state, optional chunk *}
     // TODO use a hashset keyed with chunk id

@@ -32,6 +32,8 @@ public:
 
     void tweak_loaded_chunk_radius(int delta);
 
+    inline int loaded_chunk_radius() const { return loaded_chunk_radius_; }
+
 private:
     int seed_;
     ThreadPool pool_;

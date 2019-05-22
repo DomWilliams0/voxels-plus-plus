@@ -69,7 +69,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     ChunkId_deconstruct(chunk_id, x, z);
 
     ChunkMeshRaw *mesh = mesh_pool_.construct();
-    Chunk *chunk = chunk_pool_.construct(x,z,mesh);
+    Chunk *chunk = chunk_pool_.construct(x, z, mesh);
     DLOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
 
     pool_.post([this, chunk_id, mesh, chunk, x, z]() {

@@ -130,7 +130,7 @@ void Game::render(double alpha) {
     CameraState interpolated(camera_.interpolate_from(last_camera_state_, alpha));
     renderer_.render_world(interpolated.transform());
 
-    ui_.do_frame(camera_);
+    ui_.do_frame(camera_, world_);
 }
 
 void Game::handle_keypress(SDL_Keycode key, bool down) {

@@ -17,6 +17,9 @@ namespace config {
     // defaults to hardware limit if 0/not present
     extern int kTerrainThreadWorkers;
 
+    // radius of chunks around player to load
+    extern int kInitialLoadedChunkRadius;
+
 
     // loads from config.json
     // to be called once only

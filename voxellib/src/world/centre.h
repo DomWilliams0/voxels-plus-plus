@@ -20,6 +20,8 @@ public:
 
     inline void tick() { if (followee_ != nullptr) followee_->get_current_position(pos_); }
 
+    inline void reset() { last_chunk_ = kChunkIdInit; }
+
 private:
     ICentreOfTheGoddamnWorld *followee_ = nullptr;
 

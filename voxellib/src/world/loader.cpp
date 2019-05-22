@@ -54,11 +54,11 @@ static void update_face_visibility(ChunkTerrain &terrain) {
 
 }
 
-
 WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), garbage_(32),
                                      pool_(config::kTerrainThreadWorkers),
-                                     mesh_pool_(kChunkMeshPoolCount),
-                                     chunk_pool_(kLoadedChunkRadiusChunkCount) {
+                                     loaded_chunk_radius_(config::kInitialLoadedChunkRadius),
+                                     mesh_pool_(loaded_chunk_radius_chunk_count() * 2), // large buffer
+                                     chunk_pool_(loaded_chunk_radius_chunk_count()) {
 }
 
 
@@ -121,4 +121,18 @@ void WorldLoader::clear_garbage() {
         chunk_pool_.destroy(c);
     });
 
+}
+
+int WorldLoader::loaded_chunk_radius_chunk_count() const {
+    return (2 * loaded_chunk_radius_ + 1) * (2 * loaded_chunk_radius_ + 1);
+}
+
+void WorldLoader::tweak_loaded_chunk_radius(int delta) {
+    loaded_chunk_radius_ += delta;
+
+    if (loaded_chunk_radius_ < 1)
+        loaded_chunk_radius_ = 1;
+
+    else
+        LOG_F(INFO, "%s loaded chunk radius to %d", delta > 0 ? "bumped" : "reduced", loaded_chunk_radius_);
 }

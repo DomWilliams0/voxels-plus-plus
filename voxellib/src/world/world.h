@@ -46,6 +46,7 @@ public:
 
     void clear_all_chunks();
 
+    void tweak_loaded_chunk_radius(int delta);
 
 private:
     // TODO map of chunk id -> {load state, optional chunk *}

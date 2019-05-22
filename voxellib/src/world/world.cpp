@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "util.h"
 #include "loader.h"
+#include "iterators.h"
 
 World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) : spawn_{.position_=spawn_pos, .direction_=spawn_dir},
                                                          loader_(50) /* TODO random */ {}
@@ -47,44 +48,6 @@ void World::tick() {
     loader_.clear_garbage();
 }
 
-constexpr std::array<int, kLoadedChunkRadiusChunkCount * 2> mk_coord_spiral() {
-    auto array = std::array<int, kLoadedChunkRadiusChunkCount * 2>();
-
-    int layer = 1, leg = 0, x = 0, z = 0;
-    for (int i = 0; i < kLoadedChunkRadiusChunkCount; ++i) {
-        // write coord out
-        array[(i * 2) + 0] = x;
-        array[(i * 2) + 1] = z;
-
-        // advance in spiral
-        switch (leg) {
-            case 0:
-                ++x;
-                if (x == layer) ++leg;
-                break;
-            case 1:
-                ++z;
-                if (z == layer) ++leg;
-                break;
-            case 2:
-                --x;
-                if (-x == layer) ++leg;
-                break;
-            case 3:
-                --z;
-                if (-z == layer) {
-                    leg = 0;
-                    ++layer;
-                }
-                break;
-        }
-    }
-
-    return array;
-}
-
-constexpr std::array<int, kLoadedChunkRadiusChunkCount * 2> kLoadedChunkRadiusSpiral = mk_coord_spiral();
-
 void World::update_active_chunks() {
     ChunkEntry entry;
 
@@ -101,10 +64,7 @@ void World::update_active_chunks() {
 
     // make sure all chunks in range are loaded/loading
     // iterate in outward spiral
-    for (int i = 0; i < kLoadedChunkRadiusChunkCount * 2; i += 2) {
-        int x = centre_x - kLoadedChunkRadiusSpiral[i + 0];
-        int z = centre_z - kLoadedChunkRadiusSpiral[i + 1];
-
+    ITERATOR_CHUNK_SPIRAL(loader_.loaded_chunk_radius_chunk_count(), centre_x, centre_z, {
         ChunkId_t c = ChunkId(x, z);
 
         // mark this chunk as in range
@@ -116,9 +76,8 @@ void World::update_active_chunks() {
         if (entry.state == ChunkState::kUnloaded) {
             // does not block
             loader_.request_chunk(c);
-            continue;
         }
-    }
+    })
 
     // unload chunks out of range
     for (auto it = chunks_.begin(); it != chunks_.end();) {
@@ -155,6 +114,10 @@ void World::clear_all_chunks() {
     NativeGenerator::mark_dirty();
 }
 
+void World::tweak_loaded_chunk_radius(int delta) {
+    loader_.tweak_loaded_chunk_radius(delta);
+    centre_.reset();
+}
 
 bool World::RenderableChunkIterator::next(Chunk **out) {
     while (iterator_ != end_) {

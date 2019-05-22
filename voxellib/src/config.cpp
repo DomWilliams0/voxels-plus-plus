@@ -6,7 +6,7 @@
 #include "world/generation/generator.h"
 
 namespace config {
-    int kTerrainThreadWorkers;
+    int kTerrainThreadWorkers, kInitialLoadedChunkRadius;
 
 
     enum GeneratorType {
@@ -96,6 +96,11 @@ namespace config {
         std::string str;
         kGenType = generator(tree, str);
         LOG_F(INFO, "config: terrain.generator == %s", str.c_str());
+
+        // chunk radius
+        kInitialLoadedChunkRadius = get<int>(tree, "terrain.load_radius");
+        if (kInitialLoadedChunkRadius < 1) kInitialLoadedChunkRadius = 1;
+        LOG_F(INFO, "config: terrain.load_radius == %d", kInitialLoadedChunkRadius);
     }
 
 }

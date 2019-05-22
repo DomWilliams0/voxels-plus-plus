@@ -27,6 +27,11 @@ public:
 
     void clear_garbage();
 
+    // number of chunks in loaded radius
+    int loaded_chunk_radius_chunk_count() const;
+
+    void tweak_loaded_chunk_radius(int delta);
+
 private:
     int seed_;
     ThreadPool pool_;
@@ -35,6 +40,9 @@ private:
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
     boost::object_pool<Chunk> chunk_pool_;
+
+    // radius around player to load chunks
+    int loaded_chunk_radius_;
 };
 
 #endif

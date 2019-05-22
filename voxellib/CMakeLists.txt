@@ -37,15 +37,15 @@ target_include_directories(${PROJECT_NAME}
 # linkage
 find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(Boost REQUIRED COMPONENTS system)
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
             Boost::system
-            Boost::thread
             GLEW::GLEW
             SDL2::Main
             imgui
         PUBLIC
             glm
+            threadpool
 )
 

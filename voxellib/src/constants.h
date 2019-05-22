@@ -25,7 +25,7 @@ const int kChunkDepth = 1 << kChunkDepthShift;
 const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
 
 // radius around player to load chunks
-const int kLoadedChunkRadius = 8;
+const int kLoadedChunkRadius = 3;
 
 const int kLoadedChunkRadiusChunkCount = (2 * kLoadedChunkRadius + 1) * (2 + kLoadedChunkRadius + 1);
 

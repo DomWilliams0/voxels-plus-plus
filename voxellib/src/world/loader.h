@@ -1,11 +1,11 @@
 #ifndef VOXELS_LOADER_H
 #define VOXELS_LOADER_H
 
-#include <boost/asio/thread_pool.hpp>
 #include <boost/lockfree/stack.hpp>
 #include <boost/pool/object_pool.hpp>
 #include "world/generation/generator.h"
 #include "chunk.h"
+#include "threadpool.h"
 
 class World;
 
@@ -29,7 +29,7 @@ public:
 
 private:
     int seed_;
-    boost::asio::thread_pool pool_;
+    ThreadPool pool_;
     boost::lockfree::stack<Chunk *> done_;
     boost::lockfree::stack<Chunk *> garbage_;
 

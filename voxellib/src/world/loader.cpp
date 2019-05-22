@@ -1,5 +1,3 @@
-#include <boost/asio/post.hpp>
-#include <boost/pool/object_pool.hpp>
 #include "error.h"
 #include "util.h"
 #include "loader.h"
@@ -74,8 +72,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     Chunk *chunk = chunk_pool_.construct(x,z,mesh);
     DLOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
 
-    // TODO correct to capture this?
-    boost::asio::post(pool_, [this, chunk_id, mesh, chunk, x, z]() {
+    pool_.post([this, chunk_id, mesh, chunk, x, z]() {
 //        DLOG_F(INFO, "about to load chunk(%d, %d)", x, z);
 
         // TODO load from cache/disk too

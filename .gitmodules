@@ -4,3 +4,6 @@
 [submodule "voxellib/lib/FastNoise"]
 	path = voxellib/lib/FastNoise
 	url = https://github.com/Auburns/FastNoise.git
+[submodule "voxellib/threadpool/DKit"]
+	path = voxellib/threadpool/DKit
+	url = https://github.com/drbobbeaty/DKit.git

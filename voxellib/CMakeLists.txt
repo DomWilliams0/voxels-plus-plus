@@ -21,6 +21,9 @@ set(SOURCES ${SOURCES} lib/loguru/loguru.hpp lib/loguru/loguru.cpp)
 add_subdirectory(procgen)
 add_compile_definitions(${PROJECT_NAME} PROCGEN_BIN="${procgen_BINARY_DIR}/libprocgen.so")
 
+# thread pool
+add_subdirectory(threadpool)
+
 # create library
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 

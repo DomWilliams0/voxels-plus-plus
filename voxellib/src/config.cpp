@@ -55,7 +55,7 @@ namespace config {
     static int thread_count(const boost::property_tree::ptree &tree, const char *key) {
         unsigned int count = get<int>(tree, key);
         if (count <= 0)
-            count = boost::thread::hardware_concurrency() * 2;
+            count = boost::thread::hardware_concurrency() * 2; // TODO use threadpool concurrency
 
         if (count <= 0)
             count = 2;

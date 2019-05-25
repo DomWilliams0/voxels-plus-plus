@@ -64,7 +64,7 @@ void World::update_active_chunks() {
 
     // make sure all chunks in range are loaded/loading
     // iterate in outward spiral
-    ITERATOR_CHUNK_SPIRAL(loader_.loaded_chunk_radius_chunk_count(), centre_x, centre_z, {
+    ITERATOR_CHUNK_SPIRAL_BEGIN(loader_.loaded_chunk_radius_chunk_count(), centre_x, centre_z)
         ChunkId_t c = ChunkId(x, z);
 
         // mark this chunk as in range
@@ -77,7 +77,7 @@ void World::update_active_chunks() {
             // does not block
             loader_.request_chunk(c);
         }
-    })
+    ITERATOR_CHUNK_SPIRAL_END
 
     // unload chunks out of range
     for (auto it = chunks_.begin(); it != chunks_.end();) {

@@ -187,12 +187,9 @@ void WorldLoader::tick(ChunkId_t world_centre) {
             chunks_.find_chunk(n_id, e);
 
             switch (e.state_) {
-                case ChunkState::kLoadedAllTerrain:
-                case ChunkState::kRenderable:
                 case ChunkState::kUnloaded:
                     // should have been caught be previous checks
-                    LOG_F(ERROR, "somehow neighbour chunk %s is in state %d",
-                          ChunkId_str(n_id).c_str(), e.state_);
+                    LOG_F(ERROR, "neighbour chunk %s is unloaded!", ChunkId_str(n_id).c_str());
                     continue;
 
                 case ChunkState::kLoading:
@@ -202,10 +199,18 @@ void WorldLoader::tick(ChunkId_t world_centre) {
                            ChunkId_str(chunk->id()).c_str(), ChunkId_str(n_id).c_str(), e.state_);
                     goto next_chunk;
 
+                case ChunkState::kLoadedAllTerrain: // TODO do we need to abort anything?
+                case ChunkState::kRenderable:
+                    DLOG_F(INFO, "chunk %s was already loaded, demoted in order to merge with new chunk %s",
+                           CHUNKSTR(e.chunk_), CHUNKSTR(chunk));
+
+                    // downgrade to terrain-loaded only
+                    // fall through
+
                 case ChunkState::kLoadedIsolatedTerrain:
                     // push neighbour merge task
                     DLOG_F(INFO, "submitting merge task between %s and neighbour %d %s ",
-                           ChunkId_str(chunk->id()).c_str(), n, ChunkId_str(n_id).c_str());
+                           CHUNKSTR(chunk), n, ChunkId_str(n_id).c_str());
                     job_merge_neighbouring_chunks(chunk, e.chunk_, static_cast<ChunkNeighbour>(n));
                     break;
             }
@@ -251,6 +256,9 @@ void WorldLoader::tick(ChunkId_t world_centre) {
 
     // free unloaded chunks
     garbage_.consume_all([this](Chunk *c) {
+        chunks_.set_state(c, ChunkState::kUnloaded);
+        LOG_F(INFO, "destroying chunk %s", CHUNKSTR(c));
+
         ChunkMeshRaw *mesh = c->steal_mesh();
         DLOG_F(INFO, "deallocating mesh %p", mesh);
         if (mesh != nullptr)
@@ -262,12 +270,13 @@ void WorldLoader::tick(ChunkId_t world_centre) {
 
 void WorldLoader::job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbour neighbour) {
     pool_.post([this, a, b, neighbour]() {
-        // TODO merge
+        // back and front: x axis
         if (neighbour == ChunkNeighbour::kBack) {
             for (unsigned int y = 0; y < kChunkHeight; ++y) {
                 for (unsigned int z = 0; z < kChunkDepth; ++z) {
                     unsigned int ax = kChunkWidth - 1;
                     unsigned int bx = 0;
+
                     Face af = Face::kBack;
                     Face bf = face_opposite(af);
 
@@ -286,11 +295,53 @@ void WorldLoader::job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbo
                 for (unsigned int z = 0; z < kChunkDepth; ++z) {
                     unsigned int ax = 0;
                     unsigned int bx = kChunkWidth - 1;
+
                     Face af = Face::kFront;
                     Face bf = face_opposite(af);
 
                     Block &block_a = a->terrain_[{ax, y, z}];
                     Block &block_b = b->terrain_[{bx, y, z}];
+
+                    bool a_vis = (BlockType_opaque(block_b.type_));
+                    bool b_vis = (BlockType_opaque(block_a.type_));
+
+                    block_a.set_face_visible(af, a_vis);
+                    block_b.set_face_visible(bf, b_vis);
+                }
+            }
+        }
+
+            // right and left: z axis
+        else if (neighbour == ChunkNeighbour::kRight) {
+            for (unsigned int y = 0; y < kChunkHeight; ++y) {
+                for (unsigned int x = 0; x < kChunkWidth; ++x) {
+                    unsigned int az = kChunkDepth - 1;
+                    unsigned int bz = 0;
+
+                    Face af = Face::kRight;
+                    Face bf = face_opposite(af);
+
+                    Block &block_a = a->terrain_[{x, y, az}];
+                    Block &block_b = b->terrain_[{x, y, bz}];
+
+                    bool a_vis = (BlockType_opaque(block_b.type_));
+                    bool b_vis = (BlockType_opaque(block_a.type_));
+
+                    block_a.set_face_visible(af, a_vis);
+                    block_b.set_face_visible(bf, b_vis);
+                }
+            }
+        } else if (neighbour == ChunkNeighbour::kLeft) {
+            for (unsigned int y = 0; y < kChunkHeight; ++y) {
+                for (unsigned int x = 0; x < kChunkWidth; ++x) {
+                    unsigned int az = 0;
+                    unsigned int bz = kChunkDepth - 1;
+
+                    Face af = Face::kLeft;
+                    Face bf = face_opposite(af);
+
+                    Block &block_a = a->terrain_[{x, y, az}];
+                    Block &block_b = b->terrain_[{x, y, bz}];
 
                     bool a_vis = (BlockType_opaque(block_b.type_));
                     bool b_vis = (BlockType_opaque(block_a.type_));

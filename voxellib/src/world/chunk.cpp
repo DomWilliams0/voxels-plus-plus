@@ -141,6 +141,7 @@ ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh) {}
 ChunkMeshRaw *ChunkMesh::steal_mesh() {
     auto tmp = mesh_;
     mesh_ = nullptr;
+    mesh_size_ = 0;
     return tmp;
 }
 

@@ -20,7 +20,6 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
 }
 
 
-
 class ChunkMap {
 public:
     struct Entry {
@@ -34,12 +33,19 @@ public:
 
     typedef std::unordered_map<ChunkId_t, Entry> MapType;
     typedef MapType::const_iterator const_iterator;
+
     inline MapType::const_iterator cbegin() const { return map_.cbegin(); };
+
     inline MapType::const_iterator cend() const { return map_.cend(); };
+
     inline MapType::iterator begin() { return map_.begin(); };
+
     inline MapType::iterator end() { return map_.end(); };
+
     inline bool empty() const { return map_.empty(); }
+
     inline void clear() { return map_.clear(); }
+
     inline MapType::iterator erase(MapType::iterator it) { return map_.erase(it); }
 
     class RenderableChunkIterator {
@@ -95,11 +101,18 @@ private:
     int seed_;
     ThreadPool pool_;
 
+    struct NeighbourMergeJob {
+        Chunk *chunk, *neighbour;
+        ChunkNeighbour side;
+    };
+
     boost::lockfree::stack<Chunk *>
             internal_terrain_complete_, // loading -> loaded internal terrain
             all_terrain_complete_,      // loaded internal terrain -> loaded all terrain
             mesh_complete_,             // loaded all terrain -> renderable
             garbage_;                   // to be unloaded
+    boost::lockfree::stack<NeighbourMergeJob>
+            complete_merge_jobs_;
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
     boost::object_pool<Chunk> chunk_pool_;
@@ -108,6 +121,8 @@ private:
     int loaded_chunk_radius_;
 
     ChunkMap chunks_;
+
+    void job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbour neighbour);
 };
 
 #endif

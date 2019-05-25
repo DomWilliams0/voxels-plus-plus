@@ -36,6 +36,14 @@ struct Block {
                 world_pos.z * kBlockScale,
         };
     }
+
+    // helper
+    inline void set_face_visible(Face f, bool visible) {
+        if (visible)
+            face_visibility_ &= ~face_visibility(f);
+        else
+            face_visibility_ |= face_visibility(f);
+    }
 };
 
 #endif

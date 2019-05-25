@@ -23,19 +23,15 @@ static void update_face_visibility(ChunkTerrain &terrain) {
                 Face face = kFaces[j];
                 face_offset(face, offset_pos);
 
-                // looks outside of the world, so this face is visible
-                // TODO YEAH?!
+                // facing top/bottom of world, so this face is visible
                 if (offset_pos.y < 0 || offset_pos.y >= kChunkHeight) {
                     visibility |= face_visibility(face);
                     continue;
                 }
 
-                // steps over chunk boundary
+                // faces chunk boundary, will be set later
                 if (offset_pos.x < 0 || offset_pos.x >= kChunkWidth ||
                     offset_pos.z < 0 || offset_pos.z >= kChunkDepth) {
-                    // TODO actually get it
-                    // edge, never mind
-                    visibility |= face_visibility(face);
                     continue;
                 }
 
@@ -56,7 +52,7 @@ static void update_face_visibility(ChunkTerrain &terrain) {
 
 }
 
-WorldLoader::WorldLoader(int seed) : seed_(seed),
+WorldLoader::WorldLoader(int seed) : seed_(seed), complete_merge_jobs_(32),
                                      internal_terrain_complete_(32), garbage_(32),
                                      all_terrain_complete_(32), mesh_complete_(32),
                                      pool_(config::kTerrainThreadWorkers),
@@ -169,11 +165,11 @@ void WorldLoader::tick(ChunkId_t world_centre) {
         DLOG_F(INFO, "doing %s", ChunkId_str(chunk->id()).c_str());
 
         // TODO if (update neighbours) {post neighbour merges to queue}
-        int neighbour_mask = chunk->neighbour_mask_.mask();
+        unsigned int neighbour_mask = chunk->neighbour_mask_.mask();
         chunk->neighbours(neighbours);
-        for (int i = 0; i < kChunkNeighbourCount; ++i) {
-            ChunkId_t n_id = neighbours[i];
-            ChunkNeighbour n = kChunkNeighbourValues[i];
+        for (int n = 0; n < kChunkNeighbourCount; ++n) {
+            ChunkId_t n_id = neighbours[n];
+            unsigned int n_mask = 1 << n;
 
             DLOG_F(INFO, "neighbour %d: %s", n, ChunkId_str(n_id).c_str());
 
@@ -182,8 +178,8 @@ void WorldLoader::tick(ChunkId_t world_centre) {
                 continue;
 
             // already merged or neighbour is out of range anyway
-            DLOG_F(INFO, "mask (%d) & n (%d) == %d", neighbour_mask, n, (neighbour_mask|(unsigned int)n));
-            if (neighbour_mask & (unsigned int) n)
+            DLOG_F(INFO, "mask (%d) & n (%d) == %d", neighbour_mask, n, (neighbour_mask & n_mask));
+            if (neighbour_mask & n_mask)
                 continue;
 
             // get neighbour load state
@@ -195,17 +191,22 @@ void WorldLoader::tick(ChunkId_t world_centre) {
                 case ChunkState::kRenderable:
                 case ChunkState::kUnloaded:
                     // should have been caught be previous checks
-                    assert(false);
+                    LOG_F(ERROR, "somehow neighbour chunk %s is in state %d",
+                          ChunkId_str(n_id).c_str(), e.state_);
                     continue;
 
                 case ChunkState::kLoading:
                     // come back to this pair later
                     retry.push_back(chunk);
-                    DLOG_F(INFO, "retrying %lu because n %lu state is %d", chunk->id(), n_id, e.state_);
+                    DLOG_F(INFO, "retrying %s because n %s state is %d",
+                           ChunkId_str(chunk->id()).c_str(), ChunkId_str(n_id).c_str(), e.state_);
                     goto next_chunk;
 
                 case ChunkState::kLoadedIsolatedTerrain:
-                    // TODO push neighbour merge task
+                    // push neighbour merge task
+                    DLOG_F(INFO, "submitting merge task between %s and neighbour %d %s ",
+                           ChunkId_str(chunk->id()).c_str(), n, ChunkId_str(n_id).c_str());
+                    job_merge_neighbouring_chunks(chunk, e.chunk_, static_cast<ChunkNeighbour>(n));
                     break;
             }
         }
@@ -214,6 +215,29 @@ void WorldLoader::tick(ChunkId_t world_centre) {
     if (!retry.empty())
         internal_terrain_complete_.push(retry.cbegin(), retry.cend());
     retry.clear();
+
+    // process merged terrain
+    complete_merge_jobs_.consume_all([this](const NeighbourMergeJob &job) {
+        job.chunk->neighbour_mask_.set(job.side, true);
+        job.neighbour->neighbour_mask_.set(ChunkNeighbour_opposite(job.side), true);
+
+        Chunk *chunks[2] = {job.chunk, job.neighbour}; // because nicer to iterate
+        for (Chunk *chunk : chunks) {
+            if (chunk->neighbour_mask_.complete()) {
+                // terrain is loaded, generate mesh
+                chunks_.set_state(chunk, ChunkState::kLoadedAllTerrain);
+                pool_.post([this, chunk]() {
+                    chunk->populate_mesh();
+                    mesh_complete_.push(chunk);
+                });
+            }
+        }
+    });
+
+    // process new meshes
+    mesh_complete_.consume_all([this](Chunk *chunk) {
+        chunks_.set_state(chunk, ChunkState::kRenderable);
+    });
 
 
 //    Chunk *done_chunk = nullptr;
@@ -235,6 +259,54 @@ void WorldLoader::tick(ChunkId_t world_centre) {
     });
 
 }
+
+void WorldLoader::job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbour neighbour) {
+    pool_.post([this, a, b, neighbour]() {
+        // TODO merge
+        if (neighbour == ChunkNeighbour::kBack) {
+            for (unsigned int y = 0; y < kChunkHeight; ++y) {
+                for (unsigned int z = 0; z < kChunkDepth; ++z) {
+                    unsigned int ax = kChunkWidth - 1;
+                    unsigned int bx = 0;
+                    Face af = Face::kBack;
+                    Face bf = face_opposite(af);
+
+                    Block &block_a = a->terrain_[{ax, y, z}];
+                    Block &block_b = b->terrain_[{bx, y, z}];
+
+                    bool a_vis = (BlockType_opaque(block_b.type_));
+                    bool b_vis = (BlockType_opaque(block_a.type_));
+
+                    block_a.set_face_visible(af, a_vis);
+                    block_b.set_face_visible(bf, b_vis);
+                }
+            }
+        } else if (neighbour == ChunkNeighbour::kFront) {
+            for (unsigned int y = 0; y < kChunkHeight; ++y) {
+                for (unsigned int z = 0; z < kChunkDepth; ++z) {
+                    unsigned int ax = 0;
+                    unsigned int bx = kChunkWidth - 1;
+                    Face af = Face::kFront;
+                    Face bf = face_opposite(af);
+
+                    Block &block_a = a->terrain_[{ax, y, z}];
+                    Block &block_b = b->terrain_[{bx, y, z}];
+
+                    bool a_vis = (BlockType_opaque(block_b.type_));
+                    bool b_vis = (BlockType_opaque(block_a.type_));
+
+                    block_a.set_face_visible(af, a_vis);
+                    block_b.set_face_visible(bf, b_vis);
+                }
+            }
+        }
+
+        // job is complete
+        NeighbourMergeJob job = {.chunk = a, .neighbour = b, .side=neighbour};
+        complete_merge_jobs_.push(job);
+    });
+}
+
 
 bool ChunkMap::RenderableChunkIterator::next(Chunk **out) {
     while (iterator_ != end_) {
@@ -267,7 +339,7 @@ void ChunkMap::find_chunk(ChunkId_t chunk_id, Entry &out) const {
 }
 
 void ChunkMap::set_state(Chunk *chunk, ChunkState state) {
-    ChunkState prev = ChunkState ::kUnloaded;
+    ChunkState prev = ChunkState::kUnloaded;
 
     if (state == ChunkState::kUnloaded)
         map_.erase(chunk->id());

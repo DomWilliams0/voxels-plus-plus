@@ -44,13 +44,13 @@ TEST_CASE("chunk neighbours", "[world]") {
 
         // 3/-3 is on the edge, BACK/FRONT should be out of range
         mask.update_load_range(3, 0, 0, 0, 3);
-        REQUIRE(mask.mask() == (int) ChunkNeighbour::kBack);
+        REQUIRE(mask.mask() == 1 << (int) ChunkNeighbour::kBack);
         mask.update_load_range(-3, 0, 0, 0, 3);
-        REQUIRE(mask.mask() == (int) ChunkNeighbour::kFront);
+        REQUIRE(mask.mask() == 1 << (int) ChunkNeighbour::kFront);
 
         // totally out of range
         mask.update_load_range(-100, 100, 30, -10, 5);
-        REQUIRE(mask.mask() == ((int) ChunkNeighbour::kFront | (int) ChunkNeighbour::kRight));
+        REQUIRE(mask.mask() == (1 << (int) ChunkNeighbour::kFront | 1 << (int) ChunkNeighbour::kRight));
     }
 }
 /*

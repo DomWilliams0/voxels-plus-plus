@@ -18,6 +18,7 @@ typedef uint64_t ChunkId_t;
 inline ChunkId_t ChunkId(int32_t x, int32_t z) {
     return ((uint64_t) x << 32) | (uint32_t) z;
 }
+
 const ChunkId_t kChunkIdInit = UINT64_MAX;
 
 inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
@@ -26,12 +27,15 @@ inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
 }
 
 inline std::string ChunkId_str(ChunkId_t id) {
-    int x,z;
+    int x, z;
     ChunkId_deconstruct(id, x, z);
     std::ostringstream s;
     s << "(" << x << ", " << z << ")";
     return s.str();
 }
+
+// helper
+#define CHUNKSTR(c) (ChunkId_str(c->id()).c_str())
 
 
 typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
@@ -60,20 +64,26 @@ private:
 };
 
 const int kChunkNeighbourCount = 4;
-enum class ChunkNeighbour { // bit mask
-    kFront = 1,
-    kLeft = 2,
-    kRight = 4,
-    kBack = 8,
+enum class ChunkNeighbour {
+    kFront = 0,
+    kLeft,
+    kRight,
+    kBack,
 };
 
-// "ChunkNeighbour.values()"
-static const std::array<ChunkNeighbour , kChunkNeighbourCount> kChunkNeighbourValues = {
-        ChunkNeighbour::kFront,
-        ChunkNeighbour::kLeft,
-        ChunkNeighbour::kRight,
-        ChunkNeighbour::kBack,
-};
+inline ChunkNeighbour ChunkNeighbour_opposite(ChunkNeighbour n) {
+    switch (n) {
+        case ChunkNeighbour::kFront:
+            return ChunkNeighbour::kBack;
+        case ChunkNeighbour::kLeft:
+            return ChunkNeighbour::kRight;
+        case ChunkNeighbour::kRight:
+            return ChunkNeighbour::kLeft;
+        case ChunkNeighbour::kBack:
+            return ChunkNeighbour::kFront;
+    }
+}
+
 
 typedef std::array<ChunkId_t, kChunkNeighbourCount> ChunkNeighbours;
 
@@ -84,6 +94,8 @@ public:
     void set(ChunkNeighbour neighbour, bool set);
 
     unsigned int mask() const;
+
+    inline bool complete() const { return mask() == kComplete; }
 
     void update_load_range(int my_x, int my_z, int centre_x, int centre_z, int load_radius);
 

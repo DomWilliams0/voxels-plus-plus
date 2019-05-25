@@ -28,6 +28,7 @@ void face_offset(Face face, glm::ivec3 &out);
 
 Face face_opposite(Face face);
 
+// TODO std::bitset
 typedef int8_t FaceVisibility;
 
 const FaceVisibility kFaceVisibilityAll = (1 << kFaceCount) - 1;

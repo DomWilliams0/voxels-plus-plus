@@ -177,12 +177,12 @@ void ChunkNeighbourMask::update_load_range(int my_x, int my_z, int centre_x, int
     out_of_range_.reset();
 
     if (my_x >= centre_x + load_radius)
-        out_of_range_ |= (unsigned) ChunkNeighbour::kBack;
+        out_of_range_[static_cast<int>(ChunkNeighbour::kBack)] = true;
     if (my_x <= centre_x - load_radius)
-        out_of_range_ |= (unsigned) ChunkNeighbour::kFront;
+        out_of_range_[static_cast<int>(ChunkNeighbour::kFront)] = true;
 
     if (my_z >= centre_z + load_radius)
-        out_of_range_ |= (unsigned) ChunkNeighbour::kRight;
+        out_of_range_[static_cast<int>(ChunkNeighbour::kRight)] = true;
     if (my_z <= centre_z - load_radius)
-        out_of_range_ |= (unsigned) ChunkNeighbour::kLeft;
+        out_of_range_[static_cast<int>(ChunkNeighbour::kLeft)] = true;
 }

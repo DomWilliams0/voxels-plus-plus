@@ -1,0 +1,9 @@
+[submodule "voxellib/lib/glm"]
+	path = voxellib/lib/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "voxellib/lib/FastNoise"]
+	path = voxellib/lib/FastNoise
+	url = https://github.com/Auburns/FastNoise.git
+[submodule "voxellib/threadpool/DKit"]
+	path = voxellib/threadpool/DKit
+	url = https://github.com/drbobbeaty/DKit.git

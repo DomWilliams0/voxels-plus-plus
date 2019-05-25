@@ -54,7 +54,7 @@ void World::update_active_chunks() {
         // if unloaded, need to load
         if (entry.state_ == ChunkState::kUnloaded) {
             // does not block
-            loader_.request_chunk(c);
+            loader_.request_chunk(c, centre_chunk);
         }
     ITERATOR_CHUNK_SPIRAL_END
 

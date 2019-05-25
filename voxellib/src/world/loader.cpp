@@ -62,7 +62,7 @@ WorldLoader::WorldLoader(int seed) : seed_(seed), complete_merge_jobs_(32),
 }
 
 
-void WorldLoader::request_chunk(ChunkId_t chunk_id) {
+void WorldLoader::request_chunk(ChunkId_t chunk_id, ChunkId_t centre_chunk) {
     // TODO decide here if we are loading from cache, so we only alloc a new chunk if necessary
     // don't want to allocate from memory pool from worker thread
     int x, z;
@@ -72,6 +72,10 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     Chunk *chunk = chunk_pool_.construct(x, z, mesh);
     DLOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
     chunks_.set_state(chunk, ChunkState::kLoading);
+
+    int cx, cz;
+    ChunkId_deconstruct(centre_chunk, cx, cz);
+    chunk->neighbour_mask_.update_load_range(x, z, cx, cz, loaded_chunk_radius_);
 
     pool_.post([this, chunk_id, mesh, chunk, x, z]() {
 //        DLOG_F(INFO, "about to load chunk(%d, %d)", x, z);
@@ -130,28 +134,9 @@ void WorldLoader::unload_all_chunks() {
     chunks_.clear();
 }
 
-/*static bool is_chunk_out_of_range(ChunkId_t chunk, ChunkId_t centre, int load_radius) {
-    int cx, cy, x, y;
-    ChunkId_deconstruct(centre, cx, cy);
-    ChunkId_deconstruct(chunk, x, y);
-
-    return World::is_in_loaded_range(cx, cy, load_radius, x, y);
-}*/
-
 void WorldLoader::tick(ChunkId_t world_centre) {
-    LOG_F(INFO, "------");
+    chunks_.log_debug_summary();
 
-    // update out of range mask for new world centre
-    int centre_x, centre_z;
-    ChunkId_deconstruct(world_centre, centre_x, centre_z);
-    for (auto &e : chunkmap()) {
-        Chunk *chunk = e.second.chunk_;
-        if (chunk != nullptr) {
-            int x, z;
-            ChunkId_deconstruct(e.first, x, z);
-            chunk->neighbour_mask_.update_load_range(x, z, centre_x, centre_z, loaded_chunk_radius_);
-        }
-    }
     // move chunks through pipeline
     Chunk *chunk = nullptr;
     ChunkNeighbours neighbours;
@@ -174,8 +159,9 @@ void WorldLoader::tick(ChunkId_t world_centre) {
             DLOG_F(INFO, "neighbour %d: %s", n, ChunkId_str(n_id).c_str());
 
             // one way comparison only
-            if (n_id < chunk->id())
-                continue;
+            // TODO check for this pair in job queue instead
+            // if (n_id < chunk->id())
+            //      continue;
 
             // already merged or neighbour is out of range anyway
             DLOG_F(INFO, "mask (%d) & n (%d) == %d", neighbour_mask, n, (neighbour_mask & n_mask));
@@ -222,7 +208,9 @@ void WorldLoader::tick(ChunkId_t world_centre) {
     retry.clear();
 
     // process merged terrain
-    complete_merge_jobs_.consume_all([this](const NeighbourMergeJob &job) {
+    complete_merge_jobs_.consume_all([this, world_centre](const NeighbourMergeJob &job) {
+        DLOG_F(INFO, "merging %s and neighbour %d %s", CHUNKSTR(job.chunk), job.side, CHUNKSTR(job.neighbour));
+
         job.chunk->neighbour_mask_.set(job.side, true);
         job.neighbour->neighbour_mask_.set(ChunkNeighbour_opposite(job.side), true);
 
@@ -230,11 +218,28 @@ void WorldLoader::tick(ChunkId_t world_centre) {
         for (Chunk *chunk : chunks) {
             if (chunk->neighbour_mask_.complete()) {
                 // terrain is loaded, generate mesh
+                DLOG_F(INFO, "chunk %s has all sides merged, can now generate mesh", CHUNKSTR(chunk));
                 chunks_.set_state(chunk, ChunkState::kLoadedAllTerrain);
                 pool_.post([this, chunk]() {
                     chunk->populate_mesh();
                     mesh_complete_.push(chunk);
                 });
+            } else {
+                // fancy debugging
+                ChunkMap::Entry e;
+                chunks_.find_chunk(chunk->id(), e);
+                DLOG_F(WARNING, "chunk %s has not finished all sides, what do?! stuck in state %d? mask is %d",
+                       CHUNKSTR(chunk), e.state_, chunk->neighbour_mask_.mask());
+
+                unsigned int mask = chunk->neighbour_mask_.mask();
+                ChunkNeighbours neigs;
+                chunk->neighbours(neigs);
+
+                for (int i = 0; i < kChunkNeighbourCount; ++i) {
+                    unsigned int b = 1 << i;
+                    bool set = mask & b;
+                    DLOG_F(INFO, " * neighbour %d (%s) is %d", i, ChunkId_str(neigs[i]).c_str(), set);
+                }
             }
         }
     });
@@ -244,15 +249,6 @@ void WorldLoader::tick(ChunkId_t world_centre) {
         chunks_.set_state(chunk, ChunkState::kRenderable);
     });
 
-
-//    Chunk *done_chunk = nullptr;
-//    while (internal_terrain_complete_.pop(done_chunk)) {
-//        int x, z;
-//        ChunkId_deconstruct(done_chunk->id(), x, z);
-//        assert(done_chunk->loaded());
-//
-//        chunks_.set_state(done_chunk, ChunkState::kRenderable);
-//    }
 
     // free unloaded chunks
     garbage_.consume_all([this](Chunk *c) {
@@ -412,5 +408,35 @@ void ChunkMap::set_state(Chunk *chunk, ChunkState state) {
         ChunkId_deconstruct(chunk->id(), x, z);
         DLOG_F(INFO, "set chunk(%d, %d) state to %d from %d", x, z, state, prev);
     }
+}
+
+void ChunkMap::log_debug_summary() const {
+    int unloaded = 0, loading = 0, isolated = 0, all = 0, render = 0;
+    std::ostringstream isolated_chunks;
+    for (auto &e : map_) {
+        switch (e.second.state_) {
+            case ChunkState::kUnloaded:
+                unloaded++;
+                break;
+            case ChunkState::kLoading:
+                loading++;
+                break;
+            case ChunkState::kLoadedIsolatedTerrain:
+                isolated++;
+                isolated_chunks << CHUNKSTR(e.second.chunk_) << "|";
+                break;
+            case ChunkState::kLoadedAllTerrain:
+                all++;
+                break;
+            case ChunkState::kRenderable:
+                render++;
+                break;
+        }
+    }
+
+
+    LOG_F(INFO, "CHUNKS SUMMARY: %d unloaded, %d loading, %d isolated (%s), %d all terrain, %d renderable",
+          unloaded, loading, isolated, isolated_chunks.str().c_str(), all, render);
+
 }
 

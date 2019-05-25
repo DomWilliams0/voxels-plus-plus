@@ -19,13 +19,14 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
     return cs == ChunkState::kRenderable;
 }
 
-
 class ChunkMap {
 public:
     struct Entry {
         ChunkState state_;
         Chunk *chunk_;
     };
+
+    void log_debug_summary() const;
 
     void find_chunk(ChunkId_t chunk_id, Entry &out) const;
 
@@ -75,8 +76,10 @@ public:
     /**
      * Will either load from disk, load from chunk cache or generate from scratch
      * Posts request and does not block
+     *
+     * @param centre_chunk Remains constant throughout load pipeline
      */
-    void request_chunk(ChunkId_t chunk_id);
+    void request_chunk(ChunkId_t chunk_id, ChunkId_t centre_chunk);
 
     void unload_chunk(Chunk *chunk, bool allow_cache = true);
 

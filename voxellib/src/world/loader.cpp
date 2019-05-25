@@ -146,9 +146,7 @@ void WorldLoader::tick(ChunkId_t world_centre) {
     // merge terrain
     while (internal_terrain_complete_.pop(chunk)) {
         // check for chunks that completed while sitting in the retry queue
-        ChunkMap::Entry e;
-        chunkmap().find_chunk(chunk->id(), e);
-        if (e.state_ > ChunkState::kLoadedIsolatedTerrain) {
+        if (chunks_.get_state(chunk) > ChunkState::kLoadedIsolatedTerrain) {
 //            DLOG_F(WARNING, "apparently chunk %s needs a retry even though it is state %d", CHUNKSTR(chunk), e.state_);
             continue;
         }
@@ -235,10 +233,8 @@ void WorldLoader::tick(ChunkId_t world_centre) {
                 });
             } else {
                 // fancy debugging
-                ChunkMap::Entry e;
-                chunks_.find_chunk(chunk->id(), e);
                 DLOG_F(WARNING, "chunk %s has not finished all sides, what do?! stuck in state %d? mask is %d",
-                       CHUNKSTR(chunk), e.state_, chunk->neighbour_mask_.mask());
+                       CHUNKSTR(chunk), chunks_.get_state(chunk), chunk->neighbour_mask_.mask());
 
                 unsigned int mask = chunk->neighbour_mask_.mask();
                 ChunkNeighbours neigs;
@@ -414,6 +410,12 @@ void ChunkMap::find_chunk(ChunkId_t chunk_id, Entry &out) const {
     } else {
         out = it->second;
     }
+}
+
+ChunkState ChunkMap::get_state(Chunk *chunk) const {
+    Entry e;
+    find_chunk(chunk->id(), e);
+    return e.state_;
 }
 
 void ChunkMap::set_state(Chunk *chunk, ChunkState state) {

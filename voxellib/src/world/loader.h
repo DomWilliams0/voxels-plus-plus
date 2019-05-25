@@ -31,6 +31,8 @@ public:
 
     void find_chunk(ChunkId_t chunk_id, Entry &out) const;
 
+    ChunkState get_state(Chunk *chunk) const;
+
     void set_state(Chunk *chunk, ChunkState state);
 
     typedef std::unordered_map<ChunkId_t, Entry> MapType;

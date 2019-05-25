@@ -145,6 +145,14 @@ void WorldLoader::tick(ChunkId_t world_centre) {
 
     // merge terrain
     while (internal_terrain_complete_.pop(chunk)) {
+        // check for chunks that completed while sitting in the retry queue
+        ChunkMap::Entry e;
+        chunkmap().find_chunk(chunk->id(), e);
+        if (e.state_ > ChunkState::kLoadedIsolatedTerrain) {
+//            DLOG_F(WARNING, "apparently chunk %s needs a retry even though it is state %d", CHUNKSTR(chunk), e.state_);
+            continue;
+        }
+
         chunks_.set_state(chunk, ChunkState::kLoadedIsolatedTerrain);
 
         DLOG_F(INFO, "doing %s", ChunkId_str(chunk->id()).c_str());

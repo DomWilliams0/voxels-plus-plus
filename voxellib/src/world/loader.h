@@ -20,6 +20,15 @@ inline bool ChunkState_renderable(const ChunkState &cs) {
     return cs == ChunkState::kRenderable;
 }
 
+static std::string ChunkState_str[] = {
+        "", // starts at 1
+        "kUnloaded",
+        "kLoading",
+        "kLoadedIsolatedTerrain",
+        "kLoadedAllTerrain",
+        "kRenderable",
+};
+
 class ChunkMap {
 public:
     struct Entry {

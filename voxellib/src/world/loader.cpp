@@ -187,8 +187,9 @@ void WorldLoader::tick(ChunkId_t world_centre) {
                 case ChunkState::kLoading:
                     // come back to this pair later
                     retry.push_back(chunk);
-                    DLOG_F(INFO, "retrying %s because n %s state is %d",
-                           ChunkId_str(chunk->id()).c_str(), ChunkId_str(n_id).c_str(), e.state_);
+                    DLOG_F(INFO, "retrying %s because n %s state is %s",
+                           ChunkId_str(chunk->id()).c_str(), ChunkId_str(n_id).c_str(),
+                           ChunkState_str[(int)e.state_].c_str());
                     goto next_chunk;
 
                 case ChunkState::kLoadedAllTerrain: // TODO do we need to abort anything?
@@ -439,7 +440,8 @@ void ChunkMap::set_state(Chunk *chunk, ChunkState state) {
     if (prev != state) {
         int x, z;
         ChunkId_deconstruct(chunk->id(), x, z);
-        DLOG_F(INFO, "set chunk(%d, %d) state to %d from %d", x, z, state, prev);
+        DLOG_F(INFO, "set chunk(%d, %d) state to %s from %s", x, z,
+               ChunkState_str[(int)state].c_str(), ChunkState_str[(int)prev].c_str());
     }
 }
 

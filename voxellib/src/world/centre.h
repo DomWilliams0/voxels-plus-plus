@@ -18,6 +18,8 @@ public:
 
     bool chunk(ChunkId_t &chunk_out);
 
+    inline ChunkId_t chunk() const { return last_chunk_; };
+
     inline void tick() { if (followee_ != nullptr) followee_->get_current_position(pos_); }
 
     inline void reset() { last_chunk_ = kChunkIdInit; }

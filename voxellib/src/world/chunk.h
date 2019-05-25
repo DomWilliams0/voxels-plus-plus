@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <array>
 #include <GL/gl.h>
+#include <bitset>
+#include <sstream>
 #include "glm/vec3.hpp"
 
 #include "multidim_grid.hpp"
@@ -16,13 +18,21 @@ typedef uint64_t ChunkId_t;
 inline ChunkId_t ChunkId(int32_t x, int32_t z) {
     return ((uint64_t) x << 32) | (uint32_t) z;
 }
-
 const ChunkId_t kChunkIdInit = UINT64_MAX;
 
 inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
     x = c_id >> 32;
     z = c_id & ((1L << 32) - 1);
 }
+
+inline std::string ChunkId_str(ChunkId_t id) {
+    int x,z;
+    ChunkId_deconstruct(id, x, z);
+    std::ostringstream s;
+    s << "(" << x << ", " << z << ")";
+    return s.str();
+}
+
 
 typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
 
@@ -49,6 +59,41 @@ private:
     friend class Chunk;
 };
 
+const int kChunkNeighbourCount = 4;
+enum class ChunkNeighbour { // bit mask
+    kFront = 1,
+    kLeft = 2,
+    kRight = 4,
+    kBack = 8,
+};
+
+// "ChunkNeighbour.values()"
+static const std::array<ChunkNeighbour , kChunkNeighbourCount> kChunkNeighbourValues = {
+        ChunkNeighbour::kFront,
+        ChunkNeighbour::kLeft,
+        ChunkNeighbour::kRight,
+        ChunkNeighbour::kBack,
+};
+
+typedef std::array<ChunkId_t, kChunkNeighbourCount> ChunkNeighbours;
+
+class ChunkNeighbourMask {
+public:
+    ChunkNeighbourMask();
+
+    void set(ChunkNeighbour neighbour, bool set);
+
+    unsigned int mask() const;
+
+    void update_load_range(int my_x, int my_z, int centre_x, int centre_z, int load_radius);
+
+    static const int kComplete;
+
+private:
+    std::bitset<kChunkNeighbourCount> real_;
+    std::bitset<kChunkNeighbourCount> out_of_range_;
+};
+
 typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> ChunkTerrain;
 
 class Chunk {
@@ -58,7 +103,6 @@ public:
      * @param z Chunk world z coord
      */
     Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh);
-
 
     inline ChunkId_t id() const { return id_; }
 
@@ -89,21 +133,24 @@ public:
 
     static void expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out);
 
+    /**
+     * Lazy, will only init if not set
+     */
+    void lazily_init_render_buffers();
+
+    void neighbours(ChunkNeighbours &out) const;
+
 private:
     ChunkId_t id_;
 
     // TODO subchunks
     ChunkTerrain terrain_; // TODO move to a special heap instead of being inline
     ChunkMesh mesh_;
+    ChunkNeighbourMask neighbour_mask_;
 
     friend class World;
 
     friend class WorldLoader;
-
-    /**
-     * Lazy, will only init if not set
-     */
-    void lazily_init_render_buffers();
 
     void populate_mesh();
 

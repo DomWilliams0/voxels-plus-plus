@@ -72,6 +72,9 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
     auto chunks_it(world_->renderable_chunks());
     Chunk *chunk;
     while (chunks_it.next(&chunk)) {
+        // generate vao/vbo if needed
+        chunk->lazily_init_render_buffers();
+
         // enable chunk
         // TODO can we use the same vao for all chunks?
         glBindVertexArray(chunk->vao());

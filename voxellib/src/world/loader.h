@@ -1,6 +1,7 @@
 #ifndef VOXELS_LOADER_H
 #define VOXELS_LOADER_H
 
+#include <boost/unordered_set.hpp>
 #include <boost/lockfree/stack.hpp>
 #include <boost/pool/object_pool.hpp>
 #include "world/generation/generator.h"
@@ -100,6 +101,14 @@ public:
 
     inline ChunkMap &chunkmap() { return chunks_; }
 
+    // for hashset
+    struct NeighbourMergeJobEntry {
+        ChunkId_t a, b;
+        ChunkNeighbour side;
+
+        friend bool operator==(NeighbourMergeJobEntry const &a, NeighbourMergeJobEntry const &b);
+    };
+
 private:
     int seed_;
     ThreadPool pool_;
@@ -116,6 +125,7 @@ private:
             garbage_;                   // to be unloaded
     boost::lockfree::stack<NeighbourMergeJob>
             complete_merge_jobs_;
+    boost::unordered_set<NeighbourMergeJobEntry> merge_jobs_;
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
     boost::object_pool<Chunk> chunk_pool_;
@@ -125,7 +135,7 @@ private:
 
     ChunkMap chunks_;
 
-    void job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbour neighbour);
+    bool post_neighbouring_chunks_merge(Chunk *a, Chunk *b, ChunkNeighbour neighbour);
 };
 
 #endif

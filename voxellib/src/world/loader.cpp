@@ -195,9 +195,10 @@ void WorldLoader::tick(ChunkId_t world_centre) {
 
                 case ChunkState::kLoadedIsolatedTerrain:
                     // push neighbour merge task
-                    DLOG_F(INFO, "submitting merge task between %s and neighbour %d %s ",
-                           CHUNKSTR(chunk), n, ChunkId_str(n_id).c_str());
-                    job_merge_neighbouring_chunks(chunk, e.chunk_, static_cast<ChunkNeighbour>(n));
+                    if (post_neighbouring_chunks_merge(chunk, e.chunk_, static_cast<ChunkNeighbour>(n))) {
+                        DLOG_F(INFO, "submitting merge task between %s and neighbour %d %s ",
+                               CHUNKSTR(chunk), n, ChunkId_str(n_id).c_str());
+                    }
                     break;
             }
         }
@@ -264,7 +265,28 @@ void WorldLoader::tick(ChunkId_t world_centre) {
 
 }
 
-void WorldLoader::job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbour neighbour) {
+bool operator==(WorldLoader::NeighbourMergeJobEntry const &a, WorldLoader::NeighbourMergeJobEntry const &b) {
+    return a.a == b.a && a.b == b.b && a.side == b.side;
+}
+
+std::size_t hash_value(const WorldLoader::NeighbourMergeJobEntry &e) {
+    std::size_t seed = 0;
+    boost::hash_combine(seed, e.a);
+    boost::hash_combine(seed, e.b);
+    boost::hash_combine(seed, e.side);
+    return seed;
+}
+
+
+bool WorldLoader::post_neighbouring_chunks_merge(Chunk *a, Chunk *b, ChunkNeighbour neighbour) {
+    NeighbourMergeJobEntry opposite_job = {b->id(), a->id(), ChunkNeighbour_opposite(neighbour)};
+    if (merge_jobs_.find(opposite_job) != merge_jobs_.end()) {
+        // nae bother
+        return false;
+    }
+
+    merge_jobs_.insert({a->id(), b->id(), neighbour});
+
     pool_.post([this, a, b, neighbour]() {
         // back and front: x axis
         if (neighbour == ChunkNeighbour::kBack) {
@@ -352,6 +374,7 @@ void WorldLoader::job_merge_neighbouring_chunks(Chunk *a, Chunk *b, ChunkNeighbo
         NeighbourMergeJob job = {.chunk = a, .neighbour = b, .side=neighbour};
         complete_merge_jobs_.push(job);
     });
+    return true;
 }
 
 

@@ -64,29 +64,6 @@ private:
     friend class Chunk;
 };
 
-/*const int kChunkNeighbourCount = 4;
-enum class ChunkNeighbour {
-    kFront = 0,
-    kLeft,
-    kRight,
-    kBack,
-};
-
-inline ChunkNeighbour ChunkNeighbour_opposite(ChunkNeighbour n) {
-    switch (n) {
-        case ChunkNeighbour::kFront:
-            return ChunkNeighbour::kBack;
-        case ChunkNeighbour::kLeft:
-            return ChunkNeighbour::kRight;
-        case ChunkNeighbour::kRight:
-            return ChunkNeighbour::kLeft;
-        case ChunkNeighbour::kBack:
-            return ChunkNeighbour::kFront;
-    }
-}
-
-
-typedef std::array<ChunkId_t, kChunkNeighbourCount> ChunkNeighbours;*/
 
 class Chunk {
 public:

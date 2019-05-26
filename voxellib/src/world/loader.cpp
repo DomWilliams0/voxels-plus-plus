@@ -25,7 +25,6 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         return;
     }
 
-
     ChunkMeshRaw *mesh = mesh_pool_.construct();
     chunk = chunk_pool_.construct(chunk_id, mesh);
     DLOG_F(INFO, "allocated new chunk %s", CHUNKSTR(chunk));
@@ -38,8 +37,9 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         int ret = gen->generate(chunk_id, seed_, chunk->terrain_);
         if (ret == kErrorSuccess) {
             // finalise terrain
-            // TODO might already be populated, check first
+            // TODO dont do this if loaded from file and already populated
             chunk->terrain_.update_face_visibility();
+            chunk->terrain_.populate_neighbour_opacity();
 
             finalization_queue_.add({.chunk_=chunk, .merely_update_=false});
             return;

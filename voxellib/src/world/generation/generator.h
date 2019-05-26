@@ -7,6 +7,9 @@
 
 class IGenerator {
 public:
+    virtual int generate(ChunkId_t chunk_id, int seed, Chunk *chunk) final;
+
+protected:
     virtual int generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) = 0;
 };
 

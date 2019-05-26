@@ -106,6 +106,8 @@ public:
 
     void set_state(ChunkState state);
 
+    void post_terrain_update();
+
 private:
     ChunkId_t id_;
 
@@ -115,9 +117,7 @@ private:
     ChunkState state_;
     boost::shared_mutex state_lock_;
 
-    friend class World;
-
-    friend class WorldLoader;
+    friend class IGenerator; // to allow direct access to terrain_
 
     void populate_mesh();
 };

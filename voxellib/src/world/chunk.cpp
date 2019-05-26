@@ -119,6 +119,12 @@ ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
     );
 }
 
+void Chunk::post_terrain_update() {
+    // TODO dont do this if loaded from file and already populated
+    terrain_.update_face_visibility();
+    terrain_.populate_neighbour_opacity();
+}
+
 /*void Chunk::neighbours(ChunkNeighbours &out) const {
     int x, z;
     ChunkId_deconstruct(id_, x, z);

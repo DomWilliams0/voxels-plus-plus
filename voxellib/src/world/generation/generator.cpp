@@ -14,6 +14,10 @@
 
 #include <boost/thread/locks.hpp>
 
+int IGenerator::generate(ChunkId_t chunk_id, int seed, Chunk *chunk) {
+    return generate(chunk_id, seed, chunk->terrain_);
+}
+
 int DummyGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
     // ground
     for (size_t x = 0; x < kChunkWidth; ++x) {

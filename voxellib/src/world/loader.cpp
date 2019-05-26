@@ -34,12 +34,9 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         // TODO deleted ever?
         thread_local IGenerator *gen = config::new_generator();
 
-        int ret = gen->generate(chunk_id, seed_, chunk->terrain_);
+        int ret = gen->generate(chunk_id, seed_, chunk);
         if (ret == kErrorSuccess) {
-            // finalise terrain
-            // TODO dont do this if loaded from file and already populated
-            chunk->terrain_.update_face_visibility();
-            chunk->terrain_.populate_neighbour_opacity();
+            chunk->post_terrain_update();
 
             finalization_queue_.add({.chunk_=chunk, .merely_update_=false});
             return;

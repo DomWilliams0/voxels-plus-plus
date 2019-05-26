@@ -1,7 +1,8 @@
 #ifndef VOXELS_FACE_H
 #define VOXELS_FACE_H
 
-#include <glm/vec3.hpp>
+#include <array>
+#include <bitset>
 
 // TODo store bitwise value outside
 enum Face {
@@ -24,20 +25,22 @@ const enum Face kFaces[kFaceCount] = {
         kBack
 };
 
-void face_offset(Face face, glm::ivec3 &out);
+void face_offset(Face face, size_t *out);
 
 Face face_opposite(Face face);
 
-typedef int8_t FaceVisibility;
+class FaceVisibility : std::bitset<kFaceCount> {
+public:
+    bool visible(Face face) const;
 
-const FaceVisibility kFaceVisibilityAll = (1 << kFaceCount) - 1;
-const FaceVisibility kFaceVisibilityNone = 0;
+    void set_fully_visible();
 
-inline FaceVisibility face_visibility(Face face) { return 1 << face; }
+    void set_face_visible(Face face, bool visible);
 
-inline bool face_is_visible(FaceVisibility visibility, Face face) {
-    return (visibility & face_visibility(face)) != kFaceVisibilityNone;
-}
+    // no faces visible
+    bool invisible() const;
+
+};
 
 
 #endif

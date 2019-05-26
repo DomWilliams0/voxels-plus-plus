@@ -8,25 +8,6 @@
 #include "chunk.h"
 #include "centre.h"
 #include "loader.h"
-
-enum class ChunkState {
-    kUnloaded = 1,
-    kLoaded,
-
-};
-
-inline bool ChunkState_renderable(const ChunkState &cs) {
-    return cs == ChunkState::kLoaded; // TODO or mesh being updated
-}
-
-// chunk map entry
-struct ChunkEntry {
-    ChunkState state;
-    Chunk *chunk;
-};
-
-typedef std::unordered_map<ChunkId_t, ChunkEntry> ChunkMap;
-
 class Camera;
 
 class World {
@@ -34,11 +15,6 @@ public:
     World(glm::vec3 spawn_pos = {0, 0, 0}, glm::vec3 spawn_dir = {1, 0, 0});
 
     ~World();
-
-    /**
-     * @param chunk Must have terrain and mesh fully loaded
-     */
-    void add_loaded_chunk(Chunk *chunk);
 
     void register_camera(Camera *camera);
 
@@ -49,12 +25,14 @@ public:
     void tweak_loaded_chunk_radius(int delta);
 
     inline int loaded_chunk_radius() const { return loader_.loaded_chunk_radius(); }
+
     inline int loaded_chunk_count() const { return loader_.loaded_chunk_radius_chunk_count(); }
 
+    inline ChunkMap::RenderableChunkIterator renderable_chunks() const { return loader_.renderable_chunks(); }
+
+//    static bool is_in_loaded_range(int centre_x, int centre_z, int load_radius, int chunk_x, int chunk_z);
+
 private:
-    // TODO map of chunk id -> {load state, optional chunk *}
-    // TODO use a hashset keyed with chunk id
-    ChunkMap chunks_;
     std::unordered_set<ChunkId_t> per_frame_chunks_; // used to find which chunks should be unloaded
 
     WorldCentre centre_;
@@ -67,22 +45,6 @@ private:
     WorldLoader loader_;
 
     void update_active_chunks();
-
-    void find_chunk(ChunkId_t chunk_id, ChunkEntry &out);
-
-    class RenderableChunkIterator {
-    public:
-        RenderableChunkIterator(const ChunkMap &chunks) : iterator_(chunks.cbegin()), end_(chunks.cend()) {}
-
-        bool next(Chunk **out);
-
-    private:
-        ChunkMap::const_iterator iterator_;
-        ChunkMap::const_iterator end_;
-    };
-
-public:
-    World::RenderableChunkIterator renderable_chunks();
 };
 
 

@@ -2,126 +2,67 @@
 #include "util.h"
 #include "loader.h"
 #include "config.h"
+#include "world.h"
+#include "generation/generator.h"
 
-static void update_face_visibility(ChunkTerrain &terrain) {
-    glm::ivec3 pos;
-    for (int i = 0; i < kBlocksPerChunk; ++i) {
-        Chunk::expand_block_index(terrain, i, pos);
-        Block &b = terrain[i];
-        FaceVisibility visibility = b.face_visibility_;
-
-        if (!BlockType_opaque(b.type_)) {
-            // fully visible because transparent
-            visibility = kFaceVisibilityAll;
-        } else {
-            // check each face individually
-            glm::ivec3 offset_pos;
-            for (int j = 0; j < kFaceCount; ++j) {
-                offset_pos = pos; // reset
-                Face face = kFaces[j];
-                face_offset(face, offset_pos);
-
-                // looks outside of the world, so this face is visible
-                // TODO YEAH?!
-                if (offset_pos.y < 0 || offset_pos.y >= kChunkHeight) {
-                    visibility |= face_visibility(face);
-                    continue;
-                }
-
-                // steps over chunk boundary
-                if (offset_pos.x < 0 || offset_pos.x >= kChunkWidth ||
-                    offset_pos.z < 0 || offset_pos.z >= kChunkDepth) {
-                    // TODO actually get it
-                    // edge, never mind
-                    visibility |= face_visibility(face);
-                    continue;
-                }
-
-                // inside this chunk, safe to get the block type (rather ugly...)
-                Block &offset_block = terrain[{static_cast<unsigned long>(offset_pos.x),
-                                               static_cast<unsigned long>(offset_pos.y),
-                                               static_cast<unsigned long>(offset_pos.z)}];
-
-                if (BlockType_opaque(offset_block.type_))
-                    visibility &= ~face_visibility(face); // not visible
-                else
-                    visibility |= face_visibility(face); // visible
-            }
-        }
-
-        b.face_visibility_ = visibility;
-    }
-
-}
-
-WorldLoader::WorldLoader(int seed) : seed_(seed), done_(32), garbage_(32),
+WorldLoader::WorldLoader(int seed) : seed_(seed),
                                      pool_(config::kTerrainThreadWorkers),
-                                     loaded_chunk_radius_(config::kInitialLoadedChunkRadius),
-                                     mesh_pool_(loaded_chunk_radius_chunk_count() * 2), // large buffer
-                                     chunk_pool_(loaded_chunk_radius_chunk_count()) {
+                                     loaded_chunk_radius_(config::kInitialLoadedChunkRadius) {
+    mesh_pool_.set_next_size(loaded_chunk_radius_chunk_count() * 2); // large buffer
+    chunk_pool_.set_next_size(loaded_chunk_radius_chunk_count());
 }
 
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {
-    // TODO decide here if we are loading from cache, so we only alloc a new chunk if necessary
-    // don't want to allocate from memory pool from worker thread
-    int x, z;
-    ChunkId_deconstruct(chunk_id, x, z);
+    // check current state
+    ChunkState state;
+    Chunk *chunk = chunks_.get_chunk(chunk_id, &state);
+    if (state == ChunkState::kCached) {
+        uncache_chunk(chunk);
+        return;
+    } else if (state != ChunkState::kUnloaded) {
+        LOG_F(WARNING, "requested load of already loaded chunk %s (state %s)", CHUNKSTR(chunk), state.str().c_str());
+        return;
+    }
 
     ChunkMeshRaw *mesh = mesh_pool_.construct();
-    Chunk *chunk = chunk_pool_.construct(x, z, mesh);
-    DLOG_F(INFO, "allocating new chunk(%d, %d)", x, z);
+    chunk = chunk_pool_.construct(chunk_id, mesh);
+    if (mesh == nullptr || chunk == nullptr) {
+        LOG_F(ERROR, "failed to allocate new chunk: mesh=%p, chunk=%p", mesh, chunk);
+        if (mesh) mesh_pool_.destroy(mesh);
+        if (chunk) chunk_pool_.destroy(chunk);
+        return;
+    }
 
-    pool_.post([this, chunk_id, mesh, chunk, x, z]() {
-//        DLOG_F(INFO, "about to load chunk(%d, %d)", x, z);
+    chunks_.set(chunk_id, chunk);
 
-        // TODO load from cache/disk too
-        // TODO delete when?
+    DLOG_F(INFO, "allocated new chunk %s", CHUNKSTR(chunk));
+    chunk->set_state(ChunkState::kLoadingTerrain);
+
+    pool_.post([this, chunk_id, mesh, chunk]() {
+        // TODO deleted ever?
         thread_local IGenerator *gen = config::new_generator();
 
-        int ret = gen->generate(chunk_id, seed_, chunk->terrain_);
+        int ret = gen->generate(chunk_id, seed_, chunk);
         if (ret == kErrorSuccess) {
-            // finalise terrain
-            // TODO might already be populated, check first
-            update_face_visibility(chunk->terrain_);
-            chunk->populate_mesh();
+            DLOG_F(INFO, "successfully generated terrain for %s", CHUNKSTR(chunk));
+            chunk->post_terrain_update();
+            chunk->set_state(ChunkState::kLoadedTerrain);
 
-            // add to done queue
-            if (done_.push(chunk))
-                return;
-
-            LOG_F(WARNING, "failed to push complete chunk(%d, %d) to done queue!", x, z);
+            finalization_queue_.add({.chunk_=chunk, .merely_update_=false});
+            return;
         }
 
-        LOG_F(WARNING, "failed to generate chunk(%d, %d) with seed %d: %d", x, z, seed_, ret);
+        LOG_F(WARNING, "failed to generate chunk %s with seed %d: %d", CHUNKSTR(chunk), seed_, ret);
         unload_chunk(chunk, false);
     });
-
 }
 
-
-bool WorldLoader::pop_done(Chunk *&chunk_out) {
-    return done_.pop(chunk_out);
-}
 
 void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
-    if (chunk == nullptr)
-        return;
-
-    // TODO add to cache if param set
-    garbage_.push(chunk);
+    // TODO add to garbage queue as a pair
 }
 
-void WorldLoader::clear_garbage() {
-    garbage_.consume_all([this](Chunk *c) {
-        ChunkMeshRaw *mesh = c->steal_mesh();
-        DLOG_F(INFO, "deallocating mesh %p", mesh);
-        if (mesh != nullptr)
-            mesh_pool_.destroy(mesh);
-        chunk_pool_.destroy(c);
-    });
-
-}
 
 int WorldLoader::loaded_chunk_radius_chunk_count() const {
     return (2 * loaded_chunk_radius_ + 1) * (2 * loaded_chunk_radius_ + 1);
@@ -135,4 +76,106 @@ void WorldLoader::tweak_loaded_chunk_radius(int delta) {
 
     else
         LOG_F(INFO, "%s loaded chunk radius to %d", delta > 0 ? "bumped" : "reduced", loaded_chunk_radius_);
+}
+
+void WorldLoader::unload_all_chunks() {
+/*    for (auto &entry : chunks_) {
+        Chunk *chunk = entry.second.chunk_;
+        unload_chunk(chunk);
+    }
+    chunks_.clear();*/
+}
+
+bool ChunkMap::RenderableChunkIterator::next(Chunk **out) {
+    while (iterator_ != end_) {
+        auto &pair = *(iterator_++);
+
+        if (pair.second->get_state() != ChunkState::kRenderable)
+            continue;
+
+        Chunk *chunk = pair.second;
+
+        // return this chunk
+        *out = chunk;
+        return true;
+    }
+
+    // all done
+    return false;
+}
+
+
+void WorldLoader::tick() {
+    // consume finalization queue
+    DoubleBufferedSet::SetType &finalization = finalization_queue_.swap();
+    for (auto &it : finalization) {
+        ChunkMeshRaw *new_mesh = nullptr;
+        if (it.merely_update_) {
+            new_mesh = mesh_pool_.construct();
+            if (new_mesh == nullptr) {
+                LOG_F(ERROR, "failed to allocate a new mesh from pool?!");
+                unload_chunk(it.chunk_, false);
+                continue;
+            }
+        }
+
+        pool_.post([this, it, new_mesh]() {
+            do_finalization(it.chunk_, it.merely_update_, new_mesh);
+        });
+    }
+
+    // TODO consume unload queue
+}
+
+void WorldLoader::do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh) {
+    ChunkNeighbours neighbours;
+    chunk->neighbours(neighbours);
+
+    bool retry = false;
+    for (int i = 0; i < ChunkNeighbour::kCount; i++) {
+        ChunkNeighbour n_side = i;
+        ChunkId_t n_id = neighbours[i];
+
+        ChunkState n_state;
+        Chunk *n_chunk = chunks_.get_chunk(n_id, &n_state);
+
+        switch (*n_state) {
+            case ChunkState::kUnloaded:
+            case ChunkState::kCached:
+                // nothing to do with this neighbour
+                continue;
+
+            case ChunkState::kLoadingTerrain:
+                // wait for neighbour to be loaded
+                retry = true;
+                continue;
+
+            case ChunkState::kLoadedTerrain:
+            case ChunkState::kRenderable:
+                // terrain available to merge with
+                bool merged = chunk->merge_faces_with_neighbour(n_chunk, n_side);
+
+                if (merged && !merely_update && n_state == ChunkState::kRenderable) {
+                    // avoid propagation of updates for already complete chunks
+                    finalization_queue_.add({.chunk_=n_chunk, .merely_update_=true});
+                    LOG_F(INFO, "posting a merely update finalization task for chunk %s (by chunk %s neighbour %d)",
+                          CHUNKSTR(n_chunk), CHUNKSTR(chunk), i);
+                }
+                break;
+        }
+
+    }
+
+    if (retry) {
+        // try again soon
+        finalization_queue_.add({.chunk_=chunk, .merely_update_=merely_update});
+        return;
+    }
+
+    // generate mesh and set state to renderable
+    ChunkMeshRaw *old_mesh = chunk->populate_mesh(merely_update ? new_mesh : nullptr);
+
+    if (old_mesh) {
+        // TODO add to old mesh queue to be reclaimed by the pool
+    }
 }

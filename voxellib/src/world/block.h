@@ -1,6 +1,7 @@
 #ifndef VOXELS_BLOCK_H
 #define VOXELS_BLOCK_H
 
+#include <glm/vec3.hpp>
 #include "face.h"
 #include "constants.h"
 
@@ -24,10 +25,9 @@ inline bool BlockType_opaque(BlockType bt) {
 
 struct Block {
     BlockType type_;
-    FaceVisibility face_visibility_ : kFaceCount;
+    FaceVisibility face_visibility_;
 
-    Block(BlockType type = BlockType::kAir, FaceVisibility face_visibility = kFaceVisibilityNone)
-            : type_(type), face_visibility_(face_visibility) {}
+    Block(BlockType type = BlockType::kAir) : type_(type) {}
 
     inline static glm::ivec3 from_world_pos(const glm::vec3 &world_pos) {
         return {

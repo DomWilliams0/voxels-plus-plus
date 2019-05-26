@@ -3,12 +3,14 @@
 
 #include <cstdint>
 #include <array>
-#include <GL/gl.h>
+#include <boost/thread/shared_mutex.hpp>
 #include "glm/vec3.hpp"
 
 #include "multidim_grid.hpp"
 #include "block.h"
 #include "constants.h"
+#include "chunk_load/state.h"
+#include "terrain.h"
 
 
 typedef uint64_t ChunkId_t;
@@ -24,6 +26,18 @@ inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
     z = c_id & ((1L << 32) - 1);
 }
 
+inline std::string ChunkId_str(ChunkId_t id) {
+    int x, z;
+    ChunkId_deconstruct(id, x, z);
+    std::ostringstream s;
+    s << "(" << x << ", " << z << ")";
+    return s.str();
+}
+
+// helper
+#define CHUNKSTR(c) (ChunkId_str(c->id()).c_str())
+
+
 typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
 
 class ChunkMesh {
@@ -37,6 +51,18 @@ public:
 
     inline bool has_mesh() const { return mesh_ != nullptr; }
 
+    inline unsigned int vao() const { return vao_; }
+
+    inline unsigned int vbo() const { return vbo_; }
+
+    inline ChunkMeshRaw &mesh() { return *mesh_; }
+
+    // must be run in main thread
+    void prepare_render();
+
+    // new_mesh is optional, if non-null is swapped in and old mesh is returned
+    ChunkMeshRaw *on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh);
+
     // takes ownership of mesh, sets field to null
     ChunkMeshRaw *steal_mesh();
 
@@ -44,27 +70,21 @@ private:
     ChunkMeshRaw *mesh_;
     unsigned int mesh_size_ = 0;
 
-    GLuint vao_ = 0, vbo_ = 0;
-
-    friend class Chunk;
+    unsigned int vao_ = 0, vbo_ = 0;
+    bool dirty_;
 };
 
-typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> ChunkTerrain;
+typedef std::array<ChunkId_t, ChunkNeighbour::kCount> ChunkNeighbours;
 
 class Chunk {
 public:
-    /**
-     * @param x Chunk world x coord
-     * @param z Chunk world z coord
-     */
-    Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh);
-
+    Chunk(ChunkId_t id, ChunkMeshRaw *mesh);
 
     inline ChunkId_t id() const { return id_; }
 
-    inline GLuint vao() const { return mesh_.vao_; }
+    inline unsigned int vao() const { return mesh_.vao(); }
 
-    inline GLuint vbo() const { return mesh_.vbo_; }
+    inline unsigned int vbo() const { return mesh_.vbo(); }
 
     /**
      * @return If terrain and mesh are initialised
@@ -76,40 +96,49 @@ public:
      */
     void world_offset(glm::ivec3 &out);
 
-    inline int vertex_count() const { return mesh_.mesh_size_; }
+    inline int vertex_count() const { return mesh_.mesh_size(); }
 
     inline ChunkMeshRaw *steal_mesh() { return mesh_.steal_mesh(); }
 
+    inline void prepare_render() { mesh_.prepare_render(); }
+
     /**
-     *
      * @param block_pos Global block pos
      * @return Chunk that owns it
      */
     static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
 
-    static void expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out);
+    void neighbours(ChunkNeighbours &out) const;
 
+    ChunkState get_state();
+
+    void set_state(ChunkState state);
+
+    void post_terrain_update();
+
+    /**
+     * @param side from the perspective of this
+     * @return true if a merge was done, false if it has already been done
+     */
+    bool merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side);
+
+    /**
+     * @param alternate If not null, is swapped with current mesh
+     * @return Old mesh if swapped, otherwise null
+     */
+    ChunkMeshRaw *populate_mesh(ChunkMeshRaw *alternate);
 private:
     ChunkId_t id_;
 
-    // TODO subchunks
-    ChunkTerrain terrain_; // TODO move to a special heap instead of being inline
+    ChunkTerrain terrain_;
     ChunkMesh mesh_;
 
-    friend class World;
+    ChunkState state_;
+    boost::shared_mutex state_lock_;
 
-    friend class WorldLoader;
+    friend class IGenerator; // to allow direct access to terrain_
 
-    /**
-     * Lazy, will only init if not set
-     */
-    void lazily_init_render_buffers();
-
-    void populate_mesh();
-
-    const Block &block_from_index(unsigned long index) const;
-
-    void expand_block_index(int idx, glm::ivec3 &out) const;
+    void post_set_state(ChunkState prev_state, ChunkState new_state);
 };
 
 

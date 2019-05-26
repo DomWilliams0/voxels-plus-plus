@@ -4,27 +4,39 @@
 #include "world_renderer.h"
 #include "face.h"
 #include "util.h"
+#include "centre.h"
 
-Chunk::Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh) : id_(ChunkId(x, z)), mesh_(mesh) {
+
+Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh), state_(ChunkState::kUnloaded) {
 
 }
 
+ChunkState Chunk::get_state() {
+    boost::shared_lock lock(state_lock_);
+    return state_;
+}
+
+void Chunk::post_set_state(ChunkState prev_state, ChunkState new_state) {
+    if (prev_state != new_state) {
+        DLOG_F(INFO, "set state %s : %s -> %s", CHUNKSTR(this), prev_state.str().c_str(), new_state.str().c_str());
+    }
+}
+
+void Chunk::set_state(ChunkState state) {
+    ChunkState old;
+    {
+        boost::unique_lock lock(state_lock_);
+        old = state_;
+        state_ = state;
+    }
+
+    post_set_state(old, state);
+}
+
+// TODO is this even needed?
 bool Chunk::loaded() const {
     // TODO what if mesh is empty because its invisible so mesh is 0?
-    return terrain_.size() > 0 && mesh_.has_mesh();
-}
-
-void Chunk::lazily_init_render_buffers() {
-    if (mesh_.vao_ == 0 || mesh_.vbo_ == 0) {
-        glGenBuffers(1, &mesh_.vbo_);
-        glGenVertexArrays(1, &mesh_.vao_);
-
-        if (mesh_.mesh_ == nullptr)
-            throw std::runtime_error("expected mesh to be non-null because chunk is loaded!");
-
-        glBindBuffer(GL_ARRAY_BUFFER, mesh_.vbo_);
-        glBufferData(GL_ARRAY_BUFFER, mesh_.mesh_size_ * sizeof(int), mesh_.mesh_, GL_STATIC_DRAW);
-    }
+    return /*terrain_.size() > 0 && */mesh_.has_mesh();
 }
 
 void Chunk::world_offset(glm::ivec3 &out) {
@@ -35,27 +47,29 @@ void Chunk::world_offset(glm::ivec3 &out) {
     out[2] = z * kChunkDepth * kBlockRadius * 2;
 }
 
-void Chunk::populate_mesh() {
-    glm::ivec3 block_pos;
+ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
+    ChunkMeshRaw &mesh = alternate == nullptr ? mesh_.mesh() : *alternate;
+
+    ChunkTerrain::BlockCoord block_pos;
     size_t out_idx = 0;
 
     for (int block_idx = 0; block_idx < kBlocksPerChunk; ++block_idx) {
-        const Block &block = block_from_index(block_idx);
+        const Block &block = terrain_[block_idx];
         // cull if totally occluded
-        if (block.face_visibility_ == kFaceVisibilityNone)
+        if (block.face_visibility_.invisible())
             continue;
 
         // cull air blocks
         if (block.type_ == BlockType::kAir)
             continue;
 
-        expand_block_index(block_idx, block_pos);
+        terrain_.expand(block_idx, block_pos);
 
         for (int face_idx = 0; face_idx < kFaceCount; ++face_idx) {
             auto face = kFaces[face_idx];
 
             // cull face if not visible
-            if (!face_is_visible(block.face_visibility_, face))
+            if (!block.face_visibility_.visible(face))
                 continue;
 
             int stride = 6 * 3; // 6 vertices * 6 floats per face
@@ -71,11 +85,11 @@ void Chunk::populate_mesh() {
                 int v_idx = v * 3;
                 for (int j = 0; j < 3; ++j) {
                     f_or_i.f = verts[v_idx + j] + block_pos[j] * 2 * kBlockRadius;
-                    (*mesh_.mesh_)[out_idx++] = f_or_i.i;
+                    mesh[out_idx++] = f_or_i.i;
                 }
                 // colour
                 int colour = kBlockTypeColours[static_cast<int>(block.type_)];
-                (*mesh_.mesh_)[out_idx++] = colour;
+                mesh[out_idx++] = colour;
                 assert(out_idx < kChunkMeshSize);
 /*
                 // ao
@@ -87,23 +101,24 @@ void Chunk::populate_mesh() {
         }
     }
 
-    mesh_.mesh_size_ = out_idx;
-    DLOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
-}
+    DLOG_F(INFO, "%s: new mesh is size %lu/%d", CHUNKSTR(this), out_idx, kChunkMeshSize);
 
-const Block &Chunk::block_from_index(unsigned long index) const {
-    return terrain_[terrain_.unflatten(index)];
-}
+    ChunkMeshRaw *old_mesh;
+    ChunkState old_state;
+    {
+        // take lock
+        boost::unique_lock lock(state_lock_);
 
-void Chunk::expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out) {
-    auto coord = terrain.unflatten(idx);
-    out[0] = coord[0];
-    out[1] = coord[1];
-    out[2] = coord[2];
-}
+        // set size and swap out
+        old_mesh = mesh_.on_mesh_update(out_idx, alternate);
 
-void Chunk::expand_block_index(int idx, glm::ivec3 &out) const {
-    Chunk::expand_block_index(terrain_, idx, out);
+        // set state
+        old_state = state_;
+        state_ = ChunkState::kRenderable;
+    }
+    post_set_state(old_state, ChunkState::kRenderable);
+    return old_mesh;
+
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
@@ -112,6 +127,35 @@ ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
             block_pos.z >> kChunkDepthShift
     );
 }
+
+void Chunk::post_terrain_update() {
+    // TODO dont do this if loaded from file and already populated
+    terrain_.update_face_visibility();
+    terrain_.populate_neighbour_opacity();
+}
+
+bool Chunk::merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side) {
+    bool should_merge = !terrain_.has_merged_faces(side);
+    if (should_merge) {
+        LOG_F(INFO, "merging %s's faces with %s on side %d", CHUNKSTR(this), CHUNKSTR(neighbour_chunk), *side);
+        terrain_.merge_faces(neighbour_chunk->terrain_, side);
+    }
+
+    return should_merge;
+}
+
+void Chunk::neighbours(ChunkNeighbours &out) const {
+    int x, z;
+    ChunkId_deconstruct(id_, x, z);
+
+    out = {
+            ChunkId(x - 1, z), // front
+            ChunkId(x, z - 1), // left
+            ChunkId(x, z + 1), // right
+            ChunkId(x + 1, z), // back
+    };
+}
+
 
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     auto current_chunk = Chunk::owning_chunk(Block::from_world_pos(pos_));
@@ -123,12 +167,12 @@ bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     return changed;
 }
 
-
-ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh) {}
+ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh), dirty_(true) {}
 
 ChunkMeshRaw *ChunkMesh::steal_mesh() {
     auto tmp = mesh_;
     mesh_ = nullptr;
+    mesh_size_ = 0;
     return tmp;
 }
 
@@ -143,4 +187,33 @@ ChunkMesh::~ChunkMesh() {
         vbo_ = 0;
     }
 
+}
+
+void ChunkMesh::prepare_render() {
+    if (vao_ == 0 || vbo_ == 0) {
+        glGenBuffers(1, &vbo_);
+        glGenVertexArrays(1, &vao_);
+    }
+
+    if (mesh_ == nullptr)
+        throw std::runtime_error("expected mesh to be non-null");
+
+    if (dirty_) {
+        dirty_ = false;
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+        glBufferData(GL_ARRAY_BUFFER, mesh_size_ * sizeof(int), mesh_, GL_STATIC_DRAW);
+    }
+
+}
+
+ChunkMeshRaw *ChunkMesh::on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh) {
+    mesh_size_ = new_size;
+    dirty_ = true;
+    if (new_mesh != nullptr) {
+        ChunkMeshRaw *old = mesh_;
+        mesh_ = new_mesh;
+        return old;
+    }
+
+    return nullptr;
 }

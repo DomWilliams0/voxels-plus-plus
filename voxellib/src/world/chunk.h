@@ -107,15 +107,13 @@ public:
 
     void set_state(ChunkState state);
 
-    // sets state to renderable, swaps its mesh with the given mesh, and returns the old mesh
-    ChunkMeshRaw *swap_mesh_and_set_renderable(ChunkMeshRaw *new_mesh);
-
     void post_terrain_update();
 
     /**
      * @param side from the perspective of this
+     * @return true if a merge was done, false if it has already been done
      */
-    void merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side);
+    bool merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side);
 
     /**
      * @param alternate If not null, is swapped with current mesh

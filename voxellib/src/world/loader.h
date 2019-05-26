@@ -6,7 +6,7 @@
 #include "threadpool.h"
 
 #include "chunk_load/lookup.h"
-#include "chunk_load/double_buffered_thread_safe_set.h"
+#include "world/chunk_load/double_buffered_set.h"
 
 
 // lives in main thread, posts requests to thread pool

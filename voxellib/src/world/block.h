@@ -25,10 +25,9 @@ inline bool BlockType_opaque(BlockType bt) {
 
 struct Block {
     BlockType type_;
-    FaceVisibility face_visibility_ : kFaceCount;
+    FaceVisibility face_visibility_;
 
-    Block(BlockType type = BlockType::kAir, FaceVisibility face_visibility = kFaceVisibilityNone)
-            : type_(type), face_visibility_(face_visibility) {}
+    Block(BlockType type = BlockType::kAir) : type_(type) {}
 
     inline static glm::ivec3 from_world_pos(const glm::vec3 &world_pos) {
         return {
@@ -36,14 +35,6 @@ struct Block {
                 world_pos.y * kBlockScale,
                 world_pos.z * kBlockScale,
         };
-    }
-
-    // helper
-    inline void set_face_visible(Face f, bool visible) {
-        if (visible)
-            face_visibility_ &= ~face_visibility(f);
-        else
-            face_visibility_ |= face_visibility(f);
     }
 };
 

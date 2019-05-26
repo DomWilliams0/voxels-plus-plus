@@ -7,9 +7,9 @@
 
 WorldLoader::WorldLoader(int seed) : seed_(seed),
                                      pool_(config::kTerrainThreadWorkers),
-                                     loaded_chunk_radius_(config::kInitialLoadedChunkRadius),
-                                     mesh_pool_(loaded_chunk_radius_chunk_count() * 2), // large buffer
-                                     chunk_pool_(loaded_chunk_radius_chunk_count()) {
+                                     loaded_chunk_radius_(config::kInitialLoadedChunkRadius) {
+    mesh_pool_.set_next_size(loaded_chunk_radius_chunk_count() * 2); // large buffer
+    chunk_pool_.set_next_size(loaded_chunk_radius_chunk_count());
 }
 
 
@@ -27,8 +27,17 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
 
     ChunkMeshRaw *mesh = mesh_pool_.construct();
     chunk = chunk_pool_.construct(chunk_id, mesh);
+    if (mesh == nullptr || chunk == nullptr) {
+        LOG_F(ERROR, "failed to allocate new chunk: mesh=%p, chunk=%p", mesh, chunk);
+        if (mesh) mesh_pool_.destroy(mesh);
+        if (chunk) chunk_pool_.destroy(chunk);
+        return;
+    }
+
+    chunks_.set(chunk_id, chunk);
+
     DLOG_F(INFO, "allocated new chunk %s", CHUNKSTR(chunk));
-    chunk->set_state(ChunkState::kLoadedTerrain);
+    chunk->set_state(ChunkState::kLoadingTerrain);
 
     pool_.post([this, chunk_id, mesh, chunk]() {
         // TODO deleted ever?
@@ -36,7 +45,9 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
 
         int ret = gen->generate(chunk_id, seed_, chunk);
         if (ret == kErrorSuccess) {
+            DLOG_F(INFO, "successfully generated terrain for %s", CHUNKSTR(chunk));
             chunk->post_terrain_update();
+            chunk->set_state(ChunkState::kLoadedTerrain);
 
             finalization_queue_.add({.chunk_=chunk, .merely_update_=false});
             return;
@@ -79,9 +90,8 @@ bool ChunkMap::RenderableChunkIterator::next(Chunk **out) {
     while (iterator_ != end_) {
         auto &pair = *(iterator_++);
 
-        // not renderable
-//        if (!ChunkState_renderable(pair.second.state_))
-//            continue;
+        if (pair.second->get_state() != ChunkState::kRenderable)
+            continue;
 
         Chunk *chunk = pair.second;
 
@@ -100,14 +110,19 @@ void WorldLoader::tick() {
     DoubleBufferedSet::SetType &finalization = finalization_queue_.swap();
     for (auto &it : finalization) {
         ChunkMeshRaw *new_mesh = nullptr;
-        if (it.merely_update_)
+        if (it.merely_update_) {
             new_mesh = mesh_pool_.construct();
+            if (new_mesh == nullptr) {
+                LOG_F(ERROR, "failed to allocate a new mesh from pool?!");
+                unload_chunk(it.chunk_, false);
+                continue;
+            }
+        }
 
         pool_.post([this, it, new_mesh]() {
             do_finalization(it.chunk_, it.merely_update_, new_mesh);
         });
     }
-    finalization.clear();
 
     // TODO consume unload queue
 }
@@ -138,9 +153,9 @@ void WorldLoader::do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw
             case ChunkState::kLoadedTerrain:
             case ChunkState::kRenderable:
                 // terrain available to merge with
-                chunk->merge_faces_with_neighbour(n_chunk, n_side);
+                bool merged = chunk->merge_faces_with_neighbour(n_chunk, n_side);
 
-                if (!merely_update) {
+                if (merged && !merely_update && n_state == ChunkState::kRenderable) {
                     // avoid propagation of updates for already complete chunks
                     finalization_queue_.add({.chunk_=n_chunk, .merely_update_=true});
                     LOG_F(INFO, "posting a merely update finalization task for chunk %s (by chunk %s neighbour %d)",

@@ -7,7 +7,7 @@
 #include "centre.h"
 
 
-Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh) {
+Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh), state_(ChunkState::kUnloaded) {
 
 }
 
@@ -60,10 +60,6 @@ void Chunk::world_offset(glm::ivec3 &out) {
     out[2] = z * kChunkDepth * kBlockRadius * 2;
 }
 
-ChunkMeshRaw *Chunk::swap_mesh_and_set_renderable(ChunkMeshRaw *new_mesh) {
-    return nullptr;
-}
-
 ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
     ChunkMeshRaw &mesh = alternate == nullptr ? *mesh_.mesh_ : *alternate;
 
@@ -73,7 +69,7 @@ ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
     for (int block_idx = 0; block_idx < kBlocksPerChunk; ++block_idx) {
         const Block &block = terrain_[block_idx];
         // cull if totally occluded
-        if (block.face_visibility_ == kFaceVisibilityNone)
+        if (block.face_visibility_.invisible())
             continue;
 
         // cull air blocks
@@ -86,7 +82,7 @@ ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
             auto face = kFaces[face_idx];
 
             // cull face if not visible
-            if (!face_is_visible(block.face_visibility_, face))
+            if (!block.face_visibility_.visible(face))
                 continue;
 
             int stride = 6 * 3; // 6 vertices * 6 floats per face
@@ -119,7 +115,7 @@ ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
     }
 
     mesh_.mesh_size_ = out_idx;
-    DLOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
+    DLOG_F(INFO, "%s: new mesh is size %lu/%d", CHUNKSTR(this), out_idx, kChunkMeshSize);
 
     ChunkMeshRaw *old_mesh = nullptr;
     ChunkState old_state;
@@ -156,8 +152,14 @@ void Chunk::post_terrain_update() {
     terrain_.populate_neighbour_opacity();
 }
 
-void Chunk::merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side) {
-    terrain_.merge_faces(neighbour_chunk->terrain_, side);
+bool Chunk::merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side) {
+    bool should_merge = !terrain_.has_merged_faces(side);
+    if (should_merge) {
+        LOG_F(INFO, "merging %s's faces with %s on side %d", CHUNKSTR(this), CHUNKSTR(neighbour_chunk), *side);
+        terrain_.merge_faces(neighbour_chunk->terrain_, side);
+    }
+
+    return should_merge;
 }
 
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {

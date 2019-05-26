@@ -18,12 +18,10 @@ public:
 
     inline const MapType::iterator end() { return map_.end(); };
 
-//
     inline bool empty() const { return map_.empty(); }
-//
-//    inline void clear() { return map_.clear(); }
-//
-//    inline MapType::iterator erase(MapType::iterator it) { return map_.erase(it); }
+
+    // removes if chunk is null
+    void set(ChunkId_t chunk_id, Chunk *chunk);
 
     class RenderableChunkIterator {
     public:

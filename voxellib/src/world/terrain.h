@@ -2,6 +2,7 @@
 #define VOXELS_TERRAIN_H
 
 #include <array>
+#include <bitset>
 
 #include "multidim_grid.hpp"
 #include "block.h"
@@ -55,6 +56,10 @@ public:
 
     void merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour side);
 
+    inline bool has_merged_faces(const ChunkNeighbour &neighbour) const { return merged_sides_[*neighbour]; }
+
+    inline void reset_merged_faces() { merged_sides_.reset(); }
+
 private:
     GridType grid_;
 
@@ -82,6 +87,8 @@ private:
         NeighbourOpacity<kChunkHeight, kChunkDepth> back_, front_;
         NeighbourOpacity<kChunkWidth, kChunkHeight> left_, right_;
     } neighbour_opacity_;
+
+    std::bitset<ChunkNeighbour::kCount> merged_sides_;
 };
 
 

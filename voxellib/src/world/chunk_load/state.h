@@ -22,7 +22,7 @@ public:
 
     constexpr bool operator!=(ChunkState o) const { return value_ != o.value_; }
 
-    constexpr bool is_loaded() const { return value_ != kUnloaded && value_ != kCached; }
+    constexpr bool is_loading() const { return value_ != kUnloaded; }
 
     std::string str() const;
 

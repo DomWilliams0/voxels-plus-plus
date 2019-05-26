@@ -1,7 +1,7 @@
 #include "catch.hpp"
 #include "world/world.h"
 
-TEST_CASE("coordinate resolution", "[world]") {
+TEST_CASE("world things", "[world]") {
 
     SECTION("chunk ids") {
         int x, z;
@@ -31,7 +31,7 @@ TEST_CASE("coordinate resolution", "[world]") {
 
 }
 
-TEST_CASE("chunk neighbours", "[world]") {
+/*TEST_CASE("chunk neighbours", "[world]") {
     SECTION("out of range test") {
         ChunkNeighbourMask mask;
         REQUIRE(mask.mask() == 0);
@@ -52,7 +52,7 @@ TEST_CASE("chunk neighbours", "[world]") {
         mask.update_load_range(-100, 100, 30, -10, 5);
         REQUIRE(mask.mask() == (1 << (int) ChunkNeighbour::kFront | 1 << (int) ChunkNeighbour::kRight));
     }
-}
+}*/
 /*
 TEST_CASE("range check", "[world]") {
     REQUIRE(World::is_in_loaded_range(0, 0, 5, 0, 0));

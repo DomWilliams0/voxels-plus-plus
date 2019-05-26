@@ -37,7 +37,7 @@ void ChunkTerrain::update_face_visibility() {
 
         if (!BlockType_opaque(b.type_)) {
             // fully visible because transparent
-            visibility = kFaceVisibilityAll;
+            visibility.set_fully_visible();
         } else {
             expand(i, pos);
 
@@ -50,7 +50,7 @@ void ChunkTerrain::update_face_visibility() {
 
                 // facing top/bottom of world, so this face is visible
                 if (offset_pos[1] < 0 || offset_pos[1] >= kChunkHeight) {
-                    visibility |= face_visibility(face);
+                    visibility.set_face_visible(face, true);
                     continue;
                 }
 
@@ -62,11 +62,7 @@ void ChunkTerrain::update_face_visibility() {
 
                 // inside this chunk, safe to get the block type (rather ugly...)
                 Block &offset_block = (*this)[offset_pos];
-
-                if (BlockType_opaque(offset_block.type_))
-                    visibility &= ~face_visibility(face); // not visible
-                else
-                    visibility |= face_visibility(face); // visible
+                visibility.set_face_visible(face, !BlockType_opaque(offset_block.type_));
             }
         }
 
@@ -114,8 +110,6 @@ void ChunkTerrain::populate_neighbour_opacity() {
 }
 
 void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour side) {
-    // TODO !n_opaque?
-
     // local copy to avoid constantly reading from neighbour
     auto n_opacity = neighbour.neighbour_opacity_;
 
@@ -124,9 +118,8 @@ void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour sid
             for (size_t y = 0; y < kChunkHeight; ++y) {
                 for (size_t z = 0; z < kChunkDepth; ++z) {
                     const size_t x = kChunkWidth - 1;
-                    Block &block = (*this)[{x, y, z}];
                     bool n_opaque = n_opacity.front_[{y, z}];
-                    (*this)[{x, y, z}].set_face_visible(Face::kBack, n_opaque);
+                    (*this)[{x, y, z}].face_visibility_.set_face_visible(Face::kBack, !n_opaque);
                 }
             }
             break;
@@ -135,19 +128,34 @@ void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour sid
             for (size_t y = 0; y < kChunkHeight; ++y) {
                 for (size_t z = 0; z < kChunkDepth; ++z) {
                     const size_t x = 0;
-                    Block &block = (*this)[{x, y, z}];
                     bool n_opaque = n_opacity.back_[{y, z}];
-                    (*this)[{x, y, z}].set_face_visible(Face::kFront, n_opaque);
+                    (*this)[{x, y, z}].face_visibility_.set_face_visible(Face::kFront, !n_opaque);
+                }
+            }
+            break;
+
+        case ChunkNeighbour::kRight:
+            for (size_t x = 0; x < kChunkWidth; ++x) {
+                for (size_t y = 0; y < kChunkHeight; ++y) {
+                    const size_t z = kChunkDepth - 1;
+                    bool n_opaque = n_opacity.left_[{x, y}];
+                    (*this)[{x, y, z}].face_visibility_.set_face_visible(Face::kRight, !n_opaque);
+
                 }
             }
             break;
 
         case ChunkNeighbour::kLeft:
-            // TODO
-            break;
-        case ChunkNeighbour::kRight:
-            // TODO
+            for (size_t x = 0; x < kChunkWidth; ++x) {
+                for (size_t y = 0; y < kChunkHeight; ++y) {
+                    const size_t z = 0;
+                    bool n_opaque = n_opacity.right_[{x, y}];
+                    (*this)[{x, y, z}].face_visibility_.set_face_visible(Face::kLeft, !n_opaque);
+                }
+            }
             break;
     }
+
+    merged_sides_[*side] = true;
 }
 

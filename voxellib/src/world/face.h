@@ -2,6 +2,7 @@
 #define VOXELS_FACE_H
 
 #include <array>
+#include <bitset>
 
 // TODo store bitwise value outside
 enum Face {
@@ -28,17 +29,18 @@ void face_offset(Face face, size_t *out);
 
 Face face_opposite(Face face);
 
-// TODO std::bitset
-typedef int8_t FaceVisibility;
+class FaceVisibility : std::bitset<kFaceCount> {
+public:
+    bool visible(Face face) const;
 
-const FaceVisibility kFaceVisibilityAll = (1 << kFaceCount) - 1;
-const FaceVisibility kFaceVisibilityNone = 0;
+    void set_fully_visible();
 
-inline FaceVisibility face_visibility(Face face) { return 1 << face; }
+    void set_face_visible(Face face, bool visible);
 
-inline bool face_is_visible(FaceVisibility visibility, Face face) {
-    return (visibility & face_visibility(face)) != kFaceVisibilityNone;
-}
+    // no faces visible
+    bool invisible() const;
+
+};
 
 
 #endif

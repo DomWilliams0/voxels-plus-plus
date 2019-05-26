@@ -42,3 +42,21 @@ Face face_opposite(Face face) {
             assert(false);
     }
 }
+
+bool FaceVisibility::visible(Face face) const {
+    int bit = face;
+    return operator[](bit);
+}
+
+void FaceVisibility::set_fully_visible() {
+    set();
+}
+
+void FaceVisibility::set_face_visible(Face face, bool visible) {
+    int bit = face;
+    set(face, visible);
+}
+
+bool FaceVisibility::invisible() const {
+    return none();
+}

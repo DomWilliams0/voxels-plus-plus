@@ -48,10 +48,10 @@ void World::update_active_chunks() {
         // mark this chunk as in range
         per_frame_chunks_.insert(c);
 
-            ChunkState state;
-            loader_.chunkmap().get_chunk(c, &state);
-            if (!state.is_loaded()) {
-                loader_.request_chunk(c); // does not block
+        ChunkState state;
+        loader_.chunkmap().get_chunk(c, &state);
+        if (!state.is_loading()) {
+            loader_.request_chunk(c); // does not block
         }
     ITERATOR_CHUNK_SPIRAL_END
 

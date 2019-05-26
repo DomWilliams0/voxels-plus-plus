@@ -60,15 +60,7 @@ private:
 
     void uncache_chunk(Chunk *);
 
-    struct do_finalization {
-        do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh);
-
-        void operator()();
-
-        Chunk *chunk_;
-        bool merely_update_;
-        ChunkMeshRaw *new_mesh_;
-    };
+    void do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh);
 };
 
 #endif

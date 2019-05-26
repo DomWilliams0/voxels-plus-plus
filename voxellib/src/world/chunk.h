@@ -64,6 +64,7 @@ private:
     friend class Chunk;
 };
 
+typedef std::array<ChunkId_t, ChunkNeighbour::kCount> ChunkNeighbours;
 
 class Chunk {
 public:
@@ -100,14 +101,27 @@ public:
      */
     void lazily_init_render_buffers();
 
-//    void neighbours(ChunkNeighbours &out) const;
+    void neighbours(ChunkNeighbours &out) const;
 
     ChunkState get_state();
 
     void set_state(ChunkState state);
 
+    // sets state to renderable, swaps its mesh with the given mesh, and returns the old mesh
+    ChunkMeshRaw *swap_mesh_and_set_renderable(ChunkMeshRaw *new_mesh);
+
     void post_terrain_update();
 
+    /**
+     * @param side from the perspective of this
+     */
+    void merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side);
+
+    /**
+     * @param alternate If not null, is swapped with current mesh
+     * @return Old mesh if swapped, otherwise null
+     */
+    ChunkMeshRaw *populate_mesh(ChunkMeshRaw *alternate);
 private:
     ChunkId_t id_;
 
@@ -119,7 +133,7 @@ private:
 
     friend class IGenerator; // to allow direct access to terrain_
 
-    void populate_mesh();
+    void post_set_state(ChunkState prev_state, ChunkState new_state);
 };
 
 

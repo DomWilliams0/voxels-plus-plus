@@ -7,6 +7,7 @@
 #include "block.h"
 
 class ChunkNeighbour {
+public:
     enum Value : uint8_t {
         kFront,
         kLeft,
@@ -16,11 +17,15 @@ class ChunkNeighbour {
 
     ChunkNeighbour() = default;
 
+    ChunkNeighbour(uint8_t value) : value_(static_cast<Value>(value)) {}
+
     constexpr ChunkNeighbour(Value val) : value_(val) {}
 
     constexpr bool operator==(ChunkNeighbour o) const { return value_ == o.value_; }
 
     constexpr bool operator!=(ChunkNeighbour o) const { return value_ != o.value_; }
+
+    constexpr Value operator*() const { return value_; }
 
     constexpr static int kCount = 4;
 
@@ -48,6 +53,8 @@ public:
 
     void populate_neighbour_opacity();
 
+    void merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour side);
+
 private:
     GridType grid_;
 
@@ -56,7 +63,14 @@ private:
         typedef bool Bit; // TODO bits instead of huge bools
         typedef multidim::Grid<Bit, dim1, dim2> OpacityGridType;
 
+        NeighbourOpacity() = default;
+        NeighbourOpacity(const NeighbourOpacity &o) : grid_(o.grid_) {}
+
         constexpr inline Bit &operator[](const typename OpacityGridType::ArrayCoord &coord) {
+            return grid_[coord];
+        }
+
+        constexpr inline Bit operator[](const typename OpacityGridType::ArrayCoord &coord) const {
             return grid_[coord];
         }
 

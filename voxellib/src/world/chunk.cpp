@@ -16,6 +16,12 @@ ChunkState Chunk::get_state() {
     return state_;
 }
 
+void Chunk::post_set_state(ChunkState prev_state, ChunkState new_state) {
+    if (prev_state != new_state) {
+        DLOG_F(INFO, "set state %s : %s -> %s", CHUNKSTR(this), prev_state.str().c_str(), new_state.str().c_str());
+    }
+}
+
 void Chunk::set_state(ChunkState state) {
     ChunkState old;
     {
@@ -24,9 +30,7 @@ void Chunk::set_state(ChunkState state) {
         state_ = state;
     }
 
-    if (old != state) {
-        DLOG_F(INFO, "set state %s : %s -> %s", CHUNKSTR(this), old.str().c_str(), state.str().c_str());
-    }
+    post_set_state(old, state);
 }
 
 // TODO is this even needed?
@@ -56,7 +60,13 @@ void Chunk::world_offset(glm::ivec3 &out) {
     out[2] = z * kChunkDepth * kBlockRadius * 2;
 }
 
-void Chunk::populate_mesh() {
+ChunkMeshRaw *Chunk::swap_mesh_and_set_renderable(ChunkMeshRaw *new_mesh) {
+    return nullptr;
+}
+
+ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
+    ChunkMeshRaw &mesh = alternate == nullptr ? *mesh_.mesh_ : *alternate;
+
     ChunkTerrain::BlockCoord block_pos;
     size_t out_idx = 0;
 
@@ -92,11 +102,11 @@ void Chunk::populate_mesh() {
                 int v_idx = v * 3;
                 for (int j = 0; j < 3; ++j) {
                     f_or_i.f = verts[v_idx + j] + block_pos[j] * 2 * kBlockRadius;
-                    (*mesh_.mesh_)[out_idx++] = f_or_i.i;
+                    mesh[out_idx++] = f_or_i.i;
                 }
                 // colour
                 int colour = kBlockTypeColours[static_cast<int>(block.type_)];
-                (*mesh_.mesh_)[out_idx++] = colour;
+                mesh[out_idx++] = colour;
                 assert(out_idx < kChunkMeshSize);
 /*
                 // ao
@@ -110,6 +120,27 @@ void Chunk::populate_mesh() {
 
     mesh_.mesh_size_ = out_idx;
     DLOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
+
+    ChunkMeshRaw *old_mesh = nullptr;
+    ChunkState old_state;
+    {
+        // take lock
+        boost::unique_lock lock(state_lock_);
+
+        // swap meshes if necessary
+        if (alternate != nullptr) {
+            old_mesh = mesh_.mesh_;
+            mesh_.mesh_ = alternate;
+        }
+
+        // set state
+        old_state = state_;
+        state_ = ChunkState::kRenderable;
+    }
+
+    post_set_state(old_state, ChunkState::kRenderable);
+    return old_mesh;
+
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
@@ -125,15 +156,9 @@ void Chunk::post_terrain_update() {
     terrain_.populate_neighbour_opacity();
 }
 
-/*void Chunk::neighbours(ChunkNeighbours &out) const {
-    int x, z;
-    ChunkId_deconstruct(id_, x, z);
-
-    out[0] = ChunkId(x - 1, z); // front
-    out[1] = ChunkId(x, z - 1); // left
-    out[2] = ChunkId(x, z + 1); // right
-    out[3] = ChunkId(x + 1, z); // back
-}*/
+void Chunk::merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side) {
+    terrain_.merge_faces(neighbour_chunk->terrain_, side);
+}
 
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     auto current_chunk = Chunk::owning_chunk(Block::from_world_pos(pos_));
@@ -166,4 +191,16 @@ ChunkMesh::~ChunkMesh() {
         vbo_ = 0;
     }
 
+}
+
+void Chunk::neighbours(ChunkNeighbours &out) const {
+    int x, z;
+    ChunkId_deconstruct(id_, x, z);
+
+    out = {
+            ChunkId(x - 1, z), // front
+            ChunkId(x, z - 1), // left
+            ChunkId(x, z + 1), // right
+            ChunkId(x + 1, z), // back
+    };
 }

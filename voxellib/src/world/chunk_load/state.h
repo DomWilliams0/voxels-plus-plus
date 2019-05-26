@@ -26,6 +26,9 @@ public:
 
     std::string str() const;
 
+    constexpr Value operator*() const {return value_;}
+
+
 private:
     Value value_;
 };

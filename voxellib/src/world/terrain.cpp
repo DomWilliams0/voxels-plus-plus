@@ -113,3 +113,41 @@ void ChunkTerrain::populate_neighbour_opacity() {
     }
 }
 
+void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour side) {
+    // TODO !n_opaque?
+
+    // local copy to avoid constantly reading from neighbour
+    auto n_opacity = neighbour.neighbour_opacity_;
+
+    switch (*side) {
+        case ChunkNeighbour::kBack:
+            for (size_t y = 0; y < kChunkHeight; ++y) {
+                for (size_t z = 0; z < kChunkDepth; ++z) {
+                    const size_t x = kChunkWidth - 1;
+                    Block &block = (*this)[{x, y, z}];
+                    bool n_opaque = n_opacity.front_[{y, z}];
+                    (*this)[{x, y, z}].set_face_visible(Face::kBack, n_opaque);
+                }
+            }
+            break;
+
+        case ChunkNeighbour::kFront:
+            for (size_t y = 0; y < kChunkHeight; ++y) {
+                for (size_t z = 0; z < kChunkDepth; ++z) {
+                    const size_t x = 0;
+                    Block &block = (*this)[{x, y, z}];
+                    bool n_opaque = n_opacity.back_[{y, z}];
+                    (*this)[{x, y, z}].set_face_visible(Face::kFront, n_opaque);
+                }
+            }
+            break;
+
+        case ChunkNeighbour::kLeft:
+            // TODO
+            break;
+        case ChunkNeighbour::kRight:
+            // TODO
+            break;
+    }
+}
+

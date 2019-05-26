@@ -103,16 +103,64 @@ void WorldLoader::tick() {
         if (it.merely_update_)
             new_mesh = mesh_pool_.construct();
 
-        pool_.post(do_finalization(it.chunk_, it.merely_update_, new_mesh));
+        pool_.post([this, it, new_mesh]() {
+            do_finalization(it.chunk_, it.merely_update_, new_mesh);
+        });
     }
     finalization.clear();
 
     // TODO consume unload queue
 }
 
-WorldLoader::do_finalization::do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh) :
-        chunk_(chunk), merely_update_(merely_update), new_mesh_(new_mesh) {}
+void WorldLoader::do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh) {
+    ChunkNeighbours neighbours;
+    chunk->neighbours(neighbours);
 
-void WorldLoader::do_finalization::operator()() {
-    // TODO finalization
+    bool retry = false;
+    for (int i = 0; i < ChunkNeighbour::kCount; i++) {
+        ChunkNeighbour n_side = i;
+        ChunkId_t n_id = neighbours[i];
+
+        ChunkState n_state;
+        Chunk *n_chunk = chunks_.get_chunk(n_id, &n_state);
+
+        switch (*n_state) {
+            case ChunkState::kUnloaded:
+            case ChunkState::kCached:
+                // nothing to do with this neighbour
+                continue;
+
+            case ChunkState::kLoadingTerrain:
+                // wait for neighbour to be loaded
+                retry = true;
+                continue;
+
+            case ChunkState::kLoadedTerrain:
+            case ChunkState::kRenderable:
+                // terrain available to merge with
+                chunk->merge_faces_with_neighbour(n_chunk, n_side);
+
+                if (!merely_update) {
+                    // avoid propagation of updates for already complete chunks
+                    finalization_queue_.add({.chunk_=n_chunk, .merely_update_=true});
+                    LOG_F(INFO, "posting a merely update finalization task for chunk %s (by chunk %s neighbour %d)",
+                          CHUNKSTR(n_chunk), CHUNKSTR(chunk), i);
+                }
+                break;
+        }
+
+    }
+
+    if (retry) {
+        // try again soon
+        finalization_queue_.add({.chunk_=chunk, .merely_update_=merely_update});
+        return;
+    }
+
+    // generate mesh and set state to renderable
+    ChunkMeshRaw *old_mesh = chunk->populate_mesh(merely_update ? new_mesh : nullptr);
+
+    if (old_mesh) {
+        // TODO add to old mesh queue to be reclaimed by the pool
+    }
 }

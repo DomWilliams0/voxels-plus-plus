@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <array>
-#include <GL/gl.h>
 #include <boost/thread/shared_mutex.hpp>
 #include "glm/vec3.hpp"
 
@@ -52,6 +51,18 @@ public:
 
     inline bool has_mesh() const { return mesh_ != nullptr; }
 
+    inline unsigned int vao() const { return vao_; }
+
+    inline unsigned int vbo() const { return vbo_; }
+
+    inline ChunkMeshRaw &mesh() { return *mesh_; }
+
+    // must be run in main thread
+    void prepare_render();
+
+    // new_mesh is optional, if non-null is swapped in and old mesh is returned
+    ChunkMeshRaw *on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh);
+
     // takes ownership of mesh, sets field to null
     ChunkMeshRaw *steal_mesh();
 
@@ -59,9 +70,8 @@ private:
     ChunkMeshRaw *mesh_;
     unsigned int mesh_size_ = 0;
 
-    GLuint vao_ = 0, vbo_ = 0;
-
-    friend class Chunk;
+    unsigned int vao_ = 0, vbo_ = 0;
+    bool dirty_;
 };
 
 typedef std::array<ChunkId_t, ChunkNeighbour::kCount> ChunkNeighbours;
@@ -72,9 +82,9 @@ public:
 
     inline ChunkId_t id() const { return id_; }
 
-    inline GLuint vao() const { return mesh_.vao_; }
+    inline unsigned int vao() const { return mesh_.vao(); }
 
-    inline GLuint vbo() const { return mesh_.vbo_; }
+    inline unsigned int vbo() const { return mesh_.vbo(); }
 
     /**
      * @return If terrain and mesh are initialised
@@ -86,20 +96,17 @@ public:
      */
     void world_offset(glm::ivec3 &out);
 
-    inline int vertex_count() const { return mesh_.mesh_size_; }
+    inline int vertex_count() const { return mesh_.mesh_size(); }
 
     inline ChunkMeshRaw *steal_mesh() { return mesh_.steal_mesh(); }
+
+    inline void prepare_render() { mesh_.prepare_render(); }
 
     /**
      * @param block_pos Global block pos
      * @return Chunk that owns it
      */
     static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
-
-    /**
-     * Lazy, will only init if not set
-     */
-    void lazily_init_render_buffers();
 
     void neighbours(ChunkNeighbours &out) const;
 

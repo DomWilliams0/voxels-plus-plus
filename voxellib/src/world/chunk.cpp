@@ -39,19 +39,6 @@ bool Chunk::loaded() const {
     return /*terrain_.size() > 0 && */mesh_.has_mesh();
 }
 
-void Chunk::lazily_init_render_buffers() {
-    if (mesh_.vao_ == 0 || mesh_.vbo_ == 0) {
-        glGenBuffers(1, &mesh_.vbo_);
-        glGenVertexArrays(1, &mesh_.vao_);
-
-        if (mesh_.mesh_ == nullptr)
-            throw std::runtime_error("expected mesh to be non-null because chunk is loaded!");
-
-        glBindBuffer(GL_ARRAY_BUFFER, mesh_.vbo_);
-        glBufferData(GL_ARRAY_BUFFER, mesh_.mesh_size_ * sizeof(int), mesh_.mesh_, GL_STATIC_DRAW);
-    }
-}
-
 void Chunk::world_offset(glm::ivec3 &out) {
     int x, z;
     ChunkId_deconstruct(id_, x, z);
@@ -61,7 +48,7 @@ void Chunk::world_offset(glm::ivec3 &out) {
 }
 
 ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
-    ChunkMeshRaw &mesh = alternate == nullptr ? *mesh_.mesh_ : *alternate;
+    ChunkMeshRaw &mesh = alternate == nullptr ? mesh_.mesh() : *alternate;
 
     ChunkTerrain::BlockCoord block_pos;
     size_t out_idx = 0;
@@ -114,26 +101,21 @@ ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
         }
     }
 
-    mesh_.mesh_size_ = out_idx;
     DLOG_F(INFO, "%s: new mesh is size %lu/%d", CHUNKSTR(this), out_idx, kChunkMeshSize);
 
-    ChunkMeshRaw *old_mesh = nullptr;
+    ChunkMeshRaw *old_mesh;
     ChunkState old_state;
     {
         // take lock
         boost::unique_lock lock(state_lock_);
 
-        // swap meshes if necessary
-        if (alternate != nullptr) {
-            old_mesh = mesh_.mesh_;
-            mesh_.mesh_ = alternate;
-        }
+        // set size and swap out
+        old_mesh = mesh_.on_mesh_update(out_idx, alternate);
 
         // set state
         old_state = state_;
         state_ = ChunkState::kRenderable;
     }
-
     post_set_state(old_state, ChunkState::kRenderable);
     return old_mesh;
 
@@ -162,6 +144,19 @@ bool Chunk::merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour si
     return should_merge;
 }
 
+void Chunk::neighbours(ChunkNeighbours &out) const {
+    int x, z;
+    ChunkId_deconstruct(id_, x, z);
+
+    out = {
+            ChunkId(x - 1, z), // front
+            ChunkId(x, z - 1), // left
+            ChunkId(x, z + 1), // right
+            ChunkId(x + 1, z), // back
+    };
+}
+
+
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     auto current_chunk = Chunk::owning_chunk(Block::from_world_pos(pos_));
     bool changed = current_chunk != last_chunk_;
@@ -172,8 +167,7 @@ bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     return changed;
 }
 
-
-ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh) {}
+ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh), dirty_(true) {}
 
 ChunkMeshRaw *ChunkMesh::steal_mesh() {
     auto tmp = mesh_;
@@ -195,14 +189,31 @@ ChunkMesh::~ChunkMesh() {
 
 }
 
-void Chunk::neighbours(ChunkNeighbours &out) const {
-    int x, z;
-    ChunkId_deconstruct(id_, x, z);
+void ChunkMesh::prepare_render() {
+    if (vao_ == 0 || vbo_ == 0) {
+        glGenBuffers(1, &vbo_);
+        glGenVertexArrays(1, &vao_);
+    }
 
-    out = {
-            ChunkId(x - 1, z), // front
-            ChunkId(x, z - 1), // left
-            ChunkId(x, z + 1), // right
-            ChunkId(x + 1, z), // back
-    };
+    if (mesh_ == nullptr)
+        throw std::runtime_error("expected mesh to be non-null");
+
+    if (dirty_) {
+        dirty_ = false;
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+        glBufferData(GL_ARRAY_BUFFER, mesh_size_ * sizeof(int), mesh_, GL_STATIC_DRAW);
+    }
+
+}
+
+ChunkMeshRaw *ChunkMesh::on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh) {
+    mesh_size_ = new_size;
+    dirty_ = true;
+    if (new_mesh != nullptr) {
+        ChunkMeshRaw *old = mesh_;
+        mesh_ = new_mesh;
+        return old;
+    }
+
+    return nullptr;
 }

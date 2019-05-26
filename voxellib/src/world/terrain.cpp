@@ -54,9 +54,10 @@ void ChunkTerrain::update_face_visibility() {
                     continue;
                 }
 
-                // faces chunk boundary, will be set later
+                // faces chunk boundary, will be updated later
                 if (offset_pos[0] < 0 || offset_pos[0] >= kChunkWidth ||
                     offset_pos[2] < 0 || offset_pos[2] >= kChunkDepth) {
+                    visibility.set_face_visible(face, true);
                     continue;
                 }
 

@@ -4,13 +4,13 @@
 #include <cstdint>
 #include <array>
 #include <GL/gl.h>
-#include <bitset>
-#include <sstream>
+#include <boost/thread/shared_mutex.hpp>
 #include "glm/vec3.hpp"
 
 #include "multidim_grid.hpp"
 #include "block.h"
 #include "constants.h"
+#include "chunk_load/state.h"
 
 
 typedef uint64_t ChunkId_t;
@@ -63,7 +63,7 @@ private:
     friend class Chunk;
 };
 
-const int kChunkNeighbourCount = 4;
+/*const int kChunkNeighbourCount = 4;
 enum class ChunkNeighbour {
     kFront = 0,
     kLeft,
@@ -85,26 +85,7 @@ inline ChunkNeighbour ChunkNeighbour_opposite(ChunkNeighbour n) {
 }
 
 
-typedef std::array<ChunkId_t, kChunkNeighbourCount> ChunkNeighbours;
-
-class ChunkNeighbourMask {
-public:
-    ChunkNeighbourMask();
-
-    void set(ChunkNeighbour neighbour, bool set);
-
-    unsigned int mask() const;
-
-    inline bool complete() const { return mask() == kComplete; }
-
-    void update_load_range(int my_x, int my_z, int centre_x, int centre_z, int load_radius);
-
-    static const int kComplete;
-
-private:
-    std::bitset<kChunkNeighbourCount> real_;
-    std::bitset<kChunkNeighbourCount> out_of_range_;
-};
+typedef std::array<ChunkId_t, kChunkNeighbourCount> ChunkNeighbours;*/
 
 typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> ChunkTerrain;
 
@@ -150,7 +131,9 @@ public:
      */
     void lazily_init_render_buffers();
 
-    void neighbours(ChunkNeighbours &out) const;
+//    void neighbours(ChunkNeighbours &out) const;
+
+// TODO get/set state
 
 private:
     ChunkId_t id_;
@@ -158,7 +141,9 @@ private:
     // TODO subchunks
     ChunkTerrain terrain_; // TODO move to a special heap instead of being inline
     ChunkMesh mesh_;
-    ChunkNeighbourMask neighbour_mask_;
+
+    ChunkState state_;
+    boost::shared_mutex state_lock_;
 
     friend class World;
 

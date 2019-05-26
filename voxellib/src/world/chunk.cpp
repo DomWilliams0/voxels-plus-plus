@@ -115,7 +115,7 @@ ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
     );
 }
 
-void Chunk::neighbours(ChunkNeighbours &out) const {
+/*void Chunk::neighbours(ChunkNeighbours &out) const {
     int x, z;
     ChunkId_deconstruct(id_, x, z);
 
@@ -123,7 +123,7 @@ void Chunk::neighbours(ChunkNeighbours &out) const {
     out[1] = ChunkId(x, z - 1); // left
     out[2] = ChunkId(x, z + 1); // right
     out[3] = ChunkId(x + 1, z); // back
-}
+}*/
 
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     auto current_chunk = Chunk::owning_chunk(Block::from_world_pos(pos_));
@@ -156,34 +156,4 @@ ChunkMesh::~ChunkMesh() {
         vbo_ = 0;
     }
 
-}
-
-const int ChunkNeighbourMask::kComplete = (1 << kChunkNeighbourCount) - 1; // all bits set
-
-ChunkNeighbourMask::ChunkNeighbourMask() : real_(0), out_of_range_(0) {
-
-}
-
-void ChunkNeighbourMask::set(ChunkNeighbour neighbour, bool set) {
-    int bit = static_cast<int>(neighbour);
-    real_.set(bit, set);
-}
-
-unsigned int ChunkNeighbourMask::mask() const {
-    auto bitset = real_ | out_of_range_;
-    return bitset.to_ulong();
-}
-
-void ChunkNeighbourMask::update_load_range(int my_x, int my_z, int centre_x, int centre_z, int load_radius) {
-    out_of_range_.reset();
-
-    if (my_x >= centre_x + load_radius)
-        out_of_range_[static_cast<int>(ChunkNeighbour::kBack)] = true;
-    if (my_x <= centre_x - load_radius)
-        out_of_range_[static_cast<int>(ChunkNeighbour::kFront)] = true;
-
-    if (my_z >= centre_z + load_radius)
-        out_of_range_[static_cast<int>(ChunkNeighbour::kRight)] = true;
-    if (my_z <= centre_z - load_radius)
-        out_of_range_[static_cast<int>(ChunkNeighbour::kLeft)] = true;
 }

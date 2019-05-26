@@ -128,10 +128,10 @@ void WorldLoader::tick() {
     ChunkUnloadQueue::Entries &to_unload = unload_queue_.swap();
     for (auto &it : to_unload) {
         Chunk *chunk = it.chunk_;
+        ChunkState state = chunk->get_state();
 
-        switch (*chunk->get_state()) {
+        switch (*state) {
             case ChunkState::kUnloaded:
-            case ChunkState::kCached:
                 // nop
                 continue;
 
@@ -142,6 +142,7 @@ void WorldLoader::tick() {
                 unload_queue_.add(it);
                 break;
 
+            case ChunkState::kCached:
             case ChunkState::kRenderable:
                 if (!it.allow_cache_) {
                     // no caching for you
@@ -149,13 +150,23 @@ void WorldLoader::tick() {
                     continue;
                 }
 
-                // TODO keep count of cached chunks and test limit here
-                // evict chunks if necessary
+                // dont recache :^)
+                if (state != ChunkState::kCached) {
+                    // TODO keep count of cached chunks and test limit here
+                    // evict chunks if necessary
 
-                chunk->set_state(ChunkState::kCached);
-                DLOG_F(INFO, "moved %s into cache", CHUNKSTR(chunk));
+                    chunk->set_state(ChunkState::kCached);
+                    DLOG_F(INFO, "moved %s into cache", CHUNKSTR(chunk));
+                }
 
         }
+    }
+
+    // reclaim mesh garbage
+    MeshGarbage::Entries &mesh_garbage = mesh_garbage_.swap();
+    for (ChunkMeshRaw *garbage : mesh_garbage) {
+        mesh_pool_.destroy(garbage);
+        DLOG_F(INFO, "reclaimed a mesh");
     }
 }
 
@@ -208,7 +219,7 @@ void WorldLoader::do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw
     ChunkMeshRaw *old_mesh = chunk->populate_mesh(merely_update ? new_mesh : nullptr);
 
     if (old_mesh) {
-        // TODO add to old mesh queue to be reclaimed by the pool
+        mesh_garbage_.add(old_mesh);
     }
 }
 

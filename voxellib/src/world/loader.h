@@ -51,6 +51,7 @@ private:
     ChunkMap chunks_;
     ChunkFinalizationQueue finalization_queue_;
     ChunkUnloadQueue unload_queue_;
+    MeshGarbage mesh_garbage_;
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
     boost::object_pool<Chunk> chunk_pool_;

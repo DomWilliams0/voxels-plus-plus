@@ -28,3 +28,7 @@ bool operator==(const ChunkUnloadEntry &lhs, const ChunkUnloadEntry &rhs) {
 void ChunkUnloadQueue::insert(Entries &entries, const ChunkUnloadEntry &e) {
     entries.push_back(e);
 }
+
+void MeshGarbage::insert(Entries &entries, ChunkMeshRaw *const &e) {
+    entries.push_back(e);
+}

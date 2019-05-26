@@ -7,6 +7,8 @@
 #include <boost/thread/mutex.hpp>
 #include <functional>
 
+#include "world/chunk.h"
+
 template<typename Entry, template<typename> typename Collection>
 class DoubleBufferedCollection {
 public:
@@ -77,5 +79,14 @@ std::size_t hash_value(ChunkUnloadEntry const &e);
 class ChunkUnloadQueue : public DoubleBufferedCollection<ChunkUnloadEntry, boost::container::vector> {
 protected:
     void insert(Entries &entries, const ChunkUnloadEntry &e) override;
+};
+
+
+// mesh garbage
+typedef ChunkMeshRaw *ChunkMeshRaw_ptr;
+
+class MeshGarbage : public DoubleBufferedCollection<ChunkMeshRaw *, boost::container::vector> {
+protected:
+    void insert(Entries &entries, ChunkMeshRaw *const &e) override;
 };
 #endif

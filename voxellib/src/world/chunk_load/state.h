@@ -1,8 +1,8 @@
 #ifndef VOXELS_STATE_H
 #define VOXELS_STATE_H
 
-
 #include <cstdint>
+#include <string>
 
 class ChunkState {
 public:
@@ -23,6 +23,8 @@ public:
     constexpr bool operator!=(ChunkState o) const { return value_ != o.value_; }
 
     constexpr bool is_loaded() const { return value_ != kUnloaded && value_ != kCached; }
+
+    std::string str() const;
 
 private:
     Value value_;

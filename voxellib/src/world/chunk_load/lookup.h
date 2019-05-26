@@ -9,9 +9,7 @@ class ChunkMap;
 // maps chunk id -> Chunk instance
 class ChunkMap {
 public:
-    ChunkState get_state(ChunkId_t chunk_id) const;
-
-    Chunk *get_chunk(ChunkId_t chunk_id) const;
+    Chunk *get_chunk(ChunkId_t chunk_id, ChunkState *state_out) const;
 
     typedef std::unordered_map<ChunkId_t, Chunk *> MapType;
     typedef MapType::const_iterator const_iterator;

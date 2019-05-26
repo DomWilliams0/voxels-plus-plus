@@ -21,7 +21,7 @@ public:
      *
      * @param centre_chunk Remains constant throughout load pipeline
      */
-    void request_chunk(ChunkId_t chunk_id, ChunkId_t centre_chunk);
+    void request_chunk(ChunkId_t chunk_id);
 
     void unload_chunk(Chunk *chunk, bool allow_cache = true);
 
@@ -49,7 +49,7 @@ private:
     ThreadPool pool_; // TODO should this be moved?
 
     ChunkMap chunks_;
-    Set finalization_queue_;
+    DoubleBufferedSet finalization_queue_;
     // TODO garbage queue
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
@@ -57,6 +57,18 @@ private:
 
     // radius around player to load chunks
     int loaded_chunk_radius_;
+
+    void uncache_chunk(Chunk *);
+
+    struct do_finalization {
+        do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh);
+
+        void operator()();
+
+        Chunk *chunk_;
+        bool merely_update_;
+        ChunkMeshRaw *new_mesh_;
+    };
 };
 
 #endif

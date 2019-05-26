@@ -1,6 +1,7 @@
 #ifndef VOXELS_BLOCK_H
 #define VOXELS_BLOCK_H
 
+#include <glm/vec3.hpp>
 #include "face.h"
 #include "constants.h"
 

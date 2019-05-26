@@ -48,21 +48,24 @@ void World::update_active_chunks() {
         // mark this chunk as in range
         per_frame_chunks_.insert(c);
 
-            if (!loader_.chunkmap().get_state(c).is_loaded()) {
-            // does not block
-            loader_.request_chunk(c, centre_chunk);
+            ChunkState state;
+            loader_.chunkmap().get_chunk(c, &state);
+            if (!state.is_loaded()) {
+                loader_.request_chunk(c); // does not block
         }
     ITERATOR_CHUNK_SPIRAL_END
 
     // unload chunks out of range
     ChunkMap &chunks = loader_.chunkmap();
     for (ChunkMap::MapType::value_type &e : chunks) {
-/*        if (it->second.state_ == ChunkState::kRenderable && per_frame_chunks_.find(it->first) == per_frame_chunks_.end()) {
+        Chunk *chunk = e.second;
+
+        if (per_frame_chunks_.find(e.first) == per_frame_chunks_.end() &&
+            chunk->get_state() == ChunkState::kRenderable) {
+
             // loaded and not in range
-            // any chunks in intermediate stages will finish loading then get picked up in a future tick
-            Chunk *chunk = it->second.chunk_;
-            loader_.unload_chunk(chunk); // takes ownership
-        }*/
+            loader_.unload_chunk(chunk);
+        }
     }
 
 }

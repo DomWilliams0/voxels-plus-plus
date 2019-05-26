@@ -7,7 +7,7 @@
 
 class Chunk;
 
-class Set {
+class DoubleBufferedSet {
 public:
     struct Entry {
         Chunk *chunk_;
@@ -17,7 +17,9 @@ public:
 
     void write(boost::lock_guard<boost::mutex> &lock, SetType &set);
 
-    void swap(SetType &out);
+    SetType &swap();
+
+    void add(const Entry &e);
 
 private:
     unsigned int read() const;

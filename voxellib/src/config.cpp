@@ -4,6 +4,7 @@
 #include <boost/lexical_cast.hpp>
 #include "config.h"
 #include "world/generation/generator.h"
+#include "loguru/loguru.hpp"
 
 namespace config {
     int kTerrainThreadWorkers, kInitialLoadedChunkRadius;

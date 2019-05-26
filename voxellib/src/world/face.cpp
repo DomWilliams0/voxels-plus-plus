@@ -1,24 +1,25 @@
+#include <cassert>
 #include "face.h"
 
-void face_offset(Face face, glm::ivec3 &out) {
+void face_offset(Face face, size_t *out) {
     switch (face) {
         case kFront:
-            out.x--;
+            out[0]--;
             break;
         case kLeft:
-            out.z--;
+            out[2]--;
             break;
         case kRight:
-            out.z++;
+            out[2]++;
             break;
         case kTop:
-            out.y++;
+            out[1]++;
             break;
         case kBottom:
-            out.y--;
+            out[1]--;
             break;
         case kBack:
-            out.x++;
+            out[0]++;
             break;
     }
 }
@@ -37,7 +38,7 @@ Face face_opposite(Face face) {
             return kTop;
         case kBack:
             return kFront;
+        default:
+            assert(false);
     }
-
-    return kFront; // why on earth do we need this
 }

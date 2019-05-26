@@ -1,7 +1,7 @@
 #ifndef VOXELS_FACE_H
 #define VOXELS_FACE_H
 
-#include <glm/vec3.hpp>
+#include <array>
 
 // TODo store bitwise value outside
 enum Face {
@@ -24,7 +24,7 @@ const enum Face kFaces[kFaceCount] = {
         kBack
 };
 
-void face_offset(Face face, glm::ivec3 &out);
+void face_offset(Face face, size_t *out);
 
 Face face_opposite(Face face);
 

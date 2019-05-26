@@ -7,13 +7,32 @@
 #include "centre.h"
 
 
-Chunk::Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh) : id_(ChunkId(x, z)), mesh_(mesh) {
+Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh) {
 
 }
 
+ChunkState Chunk::get_state() {
+    boost::shared_lock lock(state_lock_);
+    return state_;
+}
+
+void Chunk::set_state(ChunkState state) {
+    ChunkState old;
+    {
+        boost::unique_lock lock(state_lock_);
+        old = state_;
+        state_ = state;
+    }
+
+    if (old != state) {
+        DLOG_F(INFO, "set state %s : %s -> %s", CHUNKSTR(this), old.str().c_str(), state.str().c_str());
+    }
+}
+
+// TODO is this even needed?
 bool Chunk::loaded() const {
     // TODO what if mesh is empty because its invisible so mesh is 0?
-    return terrain_.size() > 0 && mesh_.has_mesh();
+    return /*terrain_.size() > 0 && */mesh_.has_mesh();
 }
 
 void Chunk::lazily_init_render_buffers() {
@@ -38,11 +57,11 @@ void Chunk::world_offset(glm::ivec3 &out) {
 }
 
 void Chunk::populate_mesh() {
-    glm::ivec3 block_pos;
+    ChunkTerrain::BlockCoord block_pos;
     size_t out_idx = 0;
 
     for (int block_idx = 0; block_idx < kBlocksPerChunk; ++block_idx) {
-        const Block &block = block_from_index(block_idx);
+        const Block &block = terrain_[block_idx];
         // cull if totally occluded
         if (block.face_visibility_ == kFaceVisibilityNone)
             continue;
@@ -51,7 +70,7 @@ void Chunk::populate_mesh() {
         if (block.type_ == BlockType::kAir)
             continue;
 
-        expand_block_index(block_idx, block_pos);
+        terrain_.expand(block_idx, block_pos);
 
         for (int face_idx = 0; face_idx < kFaceCount; ++face_idx) {
             auto face = kFaces[face_idx];
@@ -91,21 +110,6 @@ void Chunk::populate_mesh() {
 
     mesh_.mesh_size_ = out_idx;
     DLOG_F(INFO, "new mesh is size %lu/%d", out_idx, kChunkMeshSize);
-}
-
-const Block &Chunk::block_from_index(unsigned long index) const {
-    return terrain_[terrain_.unflatten(index)];
-}
-
-void Chunk::expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out) {
-    auto coord = terrain.unflatten(idx);
-    out[0] = coord[0];
-    out[1] = coord[1];
-    out[2] = coord[2];
-}
-
-void Chunk::expand_block_index(int idx, glm::ivec3 &out) const {
-    Chunk::expand_block_index(terrain_, idx, out);
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {

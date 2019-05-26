@@ -11,6 +11,7 @@
 #include "block.h"
 #include "constants.h"
 #include "chunk_load/state.h"
+#include "terrain.h"
 
 
 typedef uint64_t ChunkId_t;
@@ -87,15 +88,9 @@ inline ChunkNeighbour ChunkNeighbour_opposite(ChunkNeighbour n) {
 
 typedef std::array<ChunkId_t, kChunkNeighbourCount> ChunkNeighbours;*/
 
-typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> ChunkTerrain;
-
 class Chunk {
 public:
-    /**
-     * @param x Chunk world x coord
-     * @param z Chunk world z coord
-     */
-    Chunk(int32_t x, int32_t z, ChunkMeshRaw *mesh);
+    Chunk(ChunkId_t id, ChunkMeshRaw *mesh);
 
     inline ChunkId_t id() const { return id_; }
 
@@ -118,13 +113,10 @@ public:
     inline ChunkMeshRaw *steal_mesh() { return mesh_.steal_mesh(); }
 
     /**
-     *
      * @param block_pos Global block pos
      * @return Chunk that owns it
      */
     static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
-
-    static void expand_block_index(const ChunkTerrain &terrain, int idx, glm::ivec3 &out);
 
     /**
      * Lazy, will only init if not set
@@ -133,13 +125,14 @@ public:
 
 //    void neighbours(ChunkNeighbours &out) const;
 
-// TODO get/set state
+    ChunkState get_state();
+
+    void set_state(ChunkState state);
 
 private:
     ChunkId_t id_;
 
-    // TODO subchunks
-    ChunkTerrain terrain_; // TODO move to a special heap instead of being inline
+    ChunkTerrain terrain_;
     ChunkMesh mesh_;
 
     ChunkState state_;
@@ -150,10 +143,6 @@ private:
     friend class WorldLoader;
 
     void populate_mesh();
-
-    const Block &block_from_index(unsigned long index) const;
-
-    void expand_block_index(int idx, glm::ivec3 &out) const;
 };
 
 

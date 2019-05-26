@@ -4,7 +4,6 @@
 #include <world/chunk.h>
 #include <boost/thread/shared_mutex.hpp>
 #include "../../../procgen/src/procgen.h"
-#include "util.h"
 
 class IGenerator {
 public:

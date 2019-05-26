@@ -83,7 +83,7 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
     }
 
     for (int i = 0; i < kBlocksPerChunk; i++) {
-        Block &b = terrain_out[terrain_out.unflatten(i)];
+        Block &b = terrain_out[i];
         b.type_ = static_cast<BlockType>(buf[i]);
     }
 

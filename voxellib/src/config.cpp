@@ -7,7 +7,7 @@
 #include "loguru/loguru.hpp"
 
 namespace config {
-    int kTerrainThreadWorkers, kInitialLoadedChunkRadius;
+    unsigned int kTerrainThreadWorkers, kInitialLoadedChunkRadius;
 
 
     enum GeneratorType {

@@ -11,8 +11,6 @@ public:
         kLoadingTerrain,
         kLoadedTerrain,
         kRenderable,
-        kCached,
-        kUnloading,
     };
 
     ChunkState() = default;

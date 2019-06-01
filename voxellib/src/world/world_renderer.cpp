@@ -67,17 +67,18 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
         glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(proj));
     }
 
-    // iterate renderable chunks
+    // collect renderable chunks
+    renderables_.clear();
+    world_->get_renderable_chunks(renderables_);
+
     glm::ivec3 world_transform;
-    auto chunks_it(world_->renderable_chunks());
-    Chunk *chunk;
-    while (chunks_it.next(&chunk)) {
-        chunk->prepare_render();
+    for (ChunkMesh *mesh : renderables_) {
+        mesh->prepare_render();
 
         // enable chunk
         // TODO can we use the same vao for all chunks?
-        glBindVertexArray(chunk->vao());
-        glBindBuffer(GL_ARRAY_BUFFER, chunk->vbo());
+        glBindVertexArray(mesh->vao());
+        glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo());
 
         // enable attributes
         {
@@ -95,12 +96,14 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
         }
 
         // update view with chunk world offset
-        chunk->world_offset(world_transform);
+        mesh->world_offset(world_transform);
         update_view(view, world_transform);
 
         // TODO instancing?
-        glDrawArrays(GL_TRIANGLES, 0, chunk->vertex_count());
+        glDrawArrays(GL_TRIANGLES, 0, mesh->mesh_size());
     }
+
+    world_->finished_rendering();
 }
 
 void WorldRenderer::toggle_wireframe() {

@@ -34,6 +34,9 @@ private:
     GLuint prog_, vao_, vbo_;
     bool wireframe_ = false;
 
+    // cleared and repopulated each frame
+    std::vector<ChunkMesh *> renderables_;
+
     /**
      * Sets the shader uniform `view` after translating by `world_transform`
      *

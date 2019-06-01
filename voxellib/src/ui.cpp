@@ -121,7 +121,7 @@ void Ui::make_ui(const Camera &camera, const World &world) {
     // loaded chunks
     {
         int chunk_radius = world.loaded_chunk_radius();
-        int chunk_count = world.loaded_chunk_count();
+        int chunk_count = loaded_radius_chunk_count(chunk_radius);
 
         char *str = chunk_rad_str_.data();
         snprintf(str, 64, "Loaded chunks: %d (radius %d)", chunk_count, chunk_radius);

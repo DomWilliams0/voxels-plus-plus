@@ -2,79 +2,88 @@
 #define VOXELS_LOADER_H
 
 #include <boost/pool/object_pool.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
+#include <boost/atomic.hpp>
+
 #include "chunk.h"
 #include "threadpool.h"
-
-#include "chunk_load/lookup.h"
 #include "world/chunk_load/double_buffered.h"
 
-
-// lives in main thread, posts requests to thread pool
+// lives in another thread
 class WorldLoader {
 
 public:
-    explicit WorldLoader(int seed);
+    static WorldLoader *create(int seed);
 
-    /**
-     * Will either load from disk, load from chunk cache or generate from scratch
-     * Posts request and does not block
-     *
-     * @param centre_chunk Remains constant throughout load pipeline
-     */
-    void request_chunk(ChunkId_t chunk_id);
-
-    void unload_chunk(Chunk *chunk, bool allow_cache = true);
-
-    // number of chunks in loaded radius
-    int loaded_chunk_radius_chunk_count() const;
-
-    void tweak_loaded_chunk_radius(int delta);
-
-    inline int loaded_chunk_radius() const { return loaded_chunk_radius_; }
+    void update_world_centre(ChunkId_t world_centre, int loaded_chunk_radius);
 
     // no caching
     // includes chunks that are currently cached too
-    void unload_all_chunks();
+    inline void unload_all_chunks() { unload_all_chunks_ = true; }
 
-    void tick(ChunkId_t world_centre);
+    void get_renderable_chunks(std::vector<ChunkMesh *> &out);
 
-    inline ChunkMap::RenderableChunkIterator renderable_chunks() const {
-        return ChunkMap::RenderableChunkIterator(chunks_);
-    }
-
-    inline ChunkMap &chunkmap() { return chunks_; }
+    void finished_rendering();
 
 private:
+    WorldLoader(int seed);
     int seed_;
-    ThreadPool pool_; // TODO should this be moved?
 
-    ChunkMap chunks_;
-    ChunkFinalizationQueue finalization_queue_;
-    ChunkUnloadQueue unload_queue_;
-    ChunkUncacheQueue uncache_queue_;
-    MeshGarbage mesh_garbage_;
+    ThreadPool pool_;
+
+    boost::unordered_map<ChunkId_t, ChunkMesh *> renderable_;
+    boost::mutex renderable_lock_;
+
+    boost::atomic_bool currently_rendering_;
+
+    boost::unordered_map<ChunkId_t, std::pair<Chunk *, ChunkState>> chunks_;
+    boost::unordered_map<ChunkId_t, Chunk *> chunk_cache_;
+    unsigned long cache_limit_;
+
+    boost::atomic_bool unload_all_chunks_;
+
+    // updated each tick by main thread
+    struct {
+        int cx_, cz_;
+        int load_radius_;
+        boost::shared_mutex lock_;
+    } world_state_;
+
+    DoubleBufferedSet<ChunkId_t> finalization_queue_;
+
+    bool flush_cache_;
+
+    boost::posix_time::ptime unload_barrier_;
+
+    boost::unordered_set<ChunkId_t> to_unload_;
+    boost::unordered_set<ChunkId_t> per_frame_chunks_;
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
     boost::object_pool<Chunk> chunk_pool_;
 
-    unsigned int cache_count_;
-    unsigned int cache_limit_;
+    void tick();
 
-    // radius around player to load chunks
-    int loaded_chunk_radius_;
+    ChunkState get_chunk(ChunkId_t chunk_id, Chunk **chunk_out = nullptr);
 
-    // move from cache back into business
-    // chunk state must be kCached
-    void uncache_chunk(Chunk *chunk);
+    void set_chunk_state(Chunk *chunk, ChunkState new_state);
 
-    // free and return back to pool
-    bool delete_chunk(Chunk *chunk);
+    // must already be in the map
+    void set_chunk_state(ChunkId_t chunk_id, ChunkState new_state);
 
-    void do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh);
 
-    void submit_for_finalization(Chunk *chunk, bool merely_update);
+    /**
+     * Will either load from disk, load from chunk cache or generate from scratch
+     * Posts request and does not block
+     */
+    void request_chunk(ChunkId_t chunk_id);
 
-    void flush_cache_wrt_distance(ChunkId_t world_centre);
+    // unload right now
+    void unload_chunk(Chunk *chunk, bool allow_cache = true);
+
+    bool should_unload(ChunkId_t chunk_id);
+
+    void flush_cache_wrt_distance();
 
 };
 

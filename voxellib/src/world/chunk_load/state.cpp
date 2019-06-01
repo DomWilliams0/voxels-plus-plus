@@ -11,11 +11,8 @@ std::string ChunkState::str() const {
             return "kLoadedTerrain";
         case kRenderable:
             return "kRenderable";
-        case kCached:
-            return "kCached";
-        case kUnloading:
-            return "kUnloading";
         default:
             assert(false);
+            return "";
     }
 }

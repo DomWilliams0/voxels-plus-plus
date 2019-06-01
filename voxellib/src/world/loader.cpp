@@ -3,36 +3,267 @@
 #include "loader.h"
 #include "config.h"
 #include "world.h"
+#include "iterators.h"
 #include "generation/generator.h"
 
-WorldLoader::WorldLoader(int seed) : seed_(seed),
-                                     pool_(config::kTerrainThreadWorkers),
-                                     loaded_chunk_radius_(config::kInitialLoadedChunkRadius),
-                                     cache_count_(0) {
-    mesh_pool_.set_next_size(loaded_chunk_radius_chunk_count() * 2); // large buffer
-    chunk_pool_.set_next_size(loaded_chunk_radius_chunk_count());
+WorldLoader *WorldLoader::create(int seed) {
+    WorldLoader *loader = new WorldLoader(seed);
+    boost::thread thread([loader]() {
+        // wait a tad for game to properly start :^)
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+        while (1) {
+            loader->tick();
+            boost::this_thread::yield();
+            // TODO sleep?
+        }
+    });
+
+    return loader;
+}
+
+WorldLoader::WorldLoader(int seed) :
+        seed_(seed),
+        pool_(config::kTerrainThreadWorkers),
+        unload_barrier_(boost::posix_time::microsec_clock::local_time()) {
+    int loaded_chunk_radius_count = loaded_radius_chunk_count(config::kInitialLoadedChunkRadius);
+
+    mesh_pool_.set_next_size(loaded_chunk_radius_count * 2); // large buffer
+    chunk_pool_.set_next_size(loaded_chunk_radius_count);
 
     // TODO set based on available memory
     cache_limit_ = 128;
     LOG_F(INFO, "chunk cache size set to %d", cache_limit_);
 }
 
+void WorldLoader::update_world_centre(ChunkId_t world_centre, int loaded_chunk_radius) {
+    boost::unique_lock lock(world_state_.lock_);
+    ChunkId_deconstruct(world_centre, world_state_.cx_, world_state_.cz_);
+    world_state_.load_radius_ = loaded_chunk_radius;
+}
+
+void WorldLoader::tick() {
+    // TODO handle unload all
+
+    // determine new chunks to load and unload
+    int cx, cz;
+    int load_radius, load_radius_chunk_count;
+    {
+        boost::shared_lock lock(world_state_.lock_);
+        cx = world_state_.cx_;
+        cz = world_state_.cz_;
+        load_radius = world_state_.load_radius_;
+    }
+    load_radius_chunk_count = loaded_radius_chunk_count(load_radius);
+
+    per_frame_chunks_.clear();
+    ITERATOR_CHUNK_SPIRAL_BEGIN(load_radius_chunk_count, cx, cz)
+        ChunkId_t c = ChunkId(x, z);
+
+        // mark this chunk as in range
+        per_frame_chunks_.insert(c);
+
+        if (get_chunk(c) == ChunkState::kUnloaded)
+            request_chunk(c);
+    ITERATOR_CHUNK_SPIRAL_END
+
+    for (auto &e : chunks_) {
+        ChunkState state = e.second.second;
+        if (state == ChunkState::kRenderable &&
+            per_frame_chunks_.find(e.first) == per_frame_chunks_.end()) {
+            // loaded and not in range
+            to_unload_.insert(e.first);
+        }
+    }
+
+    // finalization
+    auto &finalization = finalization_queue_.swap();
+
+    // first pass to update states
+    for (auto it = finalization.begin(); it != finalization.end();) {
+        ChunkId_t c = *it;
+        // TODO check load time
+
+        // marked for unload
+        if (should_unload(c) || get_chunk(c) == ChunkState::kUnloaded) {
+            it = finalization.erase(it);
+            continue;
+        }
+
+        DLOG_F(INFO, "iterated %s in finalization, setting to loaded", ChunkId_str(c).c_str());
+        set_chunk_state(c, ChunkState::kLoadedTerrain);
+        it++;
+    }
+
+    // second pass to merge neighbours
+    for (ChunkId_t c : finalization) {
+        assert(!should_unload(c)); // should have been filtered out in first pass
+
+        Chunk *chunk;
+        ChunkState state = get_chunk(c, &chunk);
+        ChunkNeighbours neighbours;
+        chunk->neighbours(neighbours);
+
+        int neighbours_done = 0;
+        for (int i = 0; i < ChunkNeighbour::kCount; i++) {
+            ChunkNeighbour n_side = i;
+            ChunkId_t n_id = neighbours[i];
+
+            Chunk *n_chunk;
+            ChunkState n_state = get_chunk(n_id, &n_chunk);
+
+            switch (*n_state) {
+                case ChunkState::kUnloaded:
+                    // nothing to do with this neighbour
+                    neighbours_done++;
+                    continue;
+
+                case ChunkState::kLoadingTerrain:
+                    // wait for neighbour to be loaded
+                    continue;
+
+                case ChunkState::kRenderable:
+                case ChunkState::kLoadedTerrain:
+                    // terrain available to merge with
+                    // TODO use result?
+                    bool merged = chunk->merge_faces_with_neighbour(n_chunk, n_side);
+                    neighbours_done++;
+
+                    if (merged && n_state == ChunkState::kRenderable) {
+                        // avoid propagation of updates for already complete chunks
+                        DLOG_F(INFO,
+                               "posting a merely update finalization task for chunk %s (by chunk %s neighbour %d)",
+                               CHUNKSTR(n_chunk), CHUNKSTR(chunk), i);
+
+                        finalization_queue_.add(n_id);
+                    }
+                    break;
+            }
+        }
+
+        DLOG_F(INFO, "%s had %d neighbours", CHUNKSTR(chunk), neighbours_done);
+
+        bool update_mesh;
+
+        // more cpu intensive but smoother experience
+        update_mesh = true; // populate no matter what
+
+        // less cpu intensive but less smooth
+        // update_mesh = neighbours_done == ChunkNeighbour::kCount;
+
+        if (!update_mesh) {
+            // try again next tick
+            finalization_queue_.add(c);
+            continue;
+        } else {
+            ChunkMeshRaw *new_mesh = nullptr;
+
+            // new mesh to swap out with current mesh for renderable chunks
+            if (state == ChunkState::kRenderable)
+                new_mesh = mesh_pool_.construct();
+
+            // generate mesh
+            ChunkMeshRaw *old_mesh = chunk->populate_mesh(new_mesh);
+
+            // reclaim old mesh
+            if (old_mesh != nullptr) {
+                mesh_pool_.destroy(old_mesh);
+            }
+
+            // update state to renderable
+            if (state != ChunkState::kRenderable) {
+                set_chunk_state(c, ChunkState::kRenderable);
+
+                {
+                    boost::lock_guard lock(renderable_lock_);
+                    renderable_[c] = chunk->mesh();
+                }
+            }
+        }
+
+    }
+
+    // unload queued chunks
+    for (auto it = to_unload_.begin(); it != to_unload_.end();) {
+        if (currently_rendering_) {
+            it++;
+            continue;
+        }
+
+        Chunk *c;
+        get_chunk(*it, &c);
+        unload_chunk(c);
+        it = to_unload_.erase(it);
+    }
+
+    // flush cache
+    if (flush_cache_) {
+        flush_cache_ = false;
+        flush_cache_wrt_distance();
+    }
+}
+
+ChunkState WorldLoader::get_chunk(ChunkId_t chunk_id, Chunk **chunk_out) {
+    auto it = chunks_.find(chunk_id);
+
+    Chunk *ret_chunk;
+    ChunkState ret_state;
+
+    if (it == chunks_.end()) {
+        ret_chunk = nullptr;
+        ret_state = ChunkState::kUnloaded;
+    } else {
+        ret_chunk = it->second.first;
+        ret_state = it->second.second;
+    }
+
+    if (chunk_out != nullptr)
+        *chunk_out = ret_chunk;
+
+    return ret_state;
+}
+
+void WorldLoader::set_chunk_state(Chunk *chunk, ChunkState new_state) {
+    ChunkId_t c = chunk->id();
+
+    ChunkState old_state = get_chunk(c);
+    if (old_state == new_state)
+        return;
+
+    if (new_state == ChunkState::kUnloaded)
+        chunks_.erase(c);
+    else
+        chunks_[c] = {chunk, new_state};
+
+    DLOG_F(INFO, "set chunk %s state from %s to %s", CHUNKSTR(chunk),
+           old_state.str().c_str(), new_state.str().c_str());
+}
+
+void WorldLoader::set_chunk_state(ChunkId_t chunk_id, ChunkState new_state) {
+    auto it = chunks_.find(chunk_id);
+    assert(it != chunks_.end()); // must already be in the map
+
+    set_chunk_state(it->second.first, new_state);
+}
+
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {
-    // check current state
-    ChunkState state;
-    Chunk *chunk = chunks_.get_chunk(chunk_id, &state);
-    if (state == ChunkState::kCached) {
-        REF_INC(chunk);
-        uncache_queue_.add(chunk_id);
-        return;
-    } else if (state != ChunkState::kUnloaded) {
-        LOG_F(WARNING, "requested load of already loaded chunk %s (state %s)", CHUNKSTR(chunk), state.str().c_str());
+    // TODO set requested timestamp
+
+    // check cache
+    auto cache_result = chunk_cache_.find(chunk_id);
+    if (cache_result != chunk_cache_.end()) {
+        // use terrain from cache
+        Chunk *cached_chunk = cache_result->second;
+        DLOG_F(INFO, "uncached requested chunk %s", CHUNKSTR(cached_chunk));
+        chunk_cache_.erase(cache_result);
+        set_chunk_state(cached_chunk, ChunkState::kLoadedTerrain);
+        finalization_queue_.add(chunk_id);
         return;
     }
 
+    // allocate chunk and mesh from pools
     ChunkMeshRaw *mesh = mesh_pool_.construct();
-    chunk = chunk_pool_.construct(chunk_id, mesh);
+    Chunk *chunk = chunk_pool_.construct(chunk_id, mesh);
     if (mesh == nullptr || chunk == nullptr) {
         LOG_F(ERROR, "failed to allocate new chunk: mesh=%p, chunk=%p", mesh, chunk);
         if (mesh) mesh_pool_.destroy(mesh);
@@ -40,22 +271,17 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         return;
     }
 
-    chunks_.set(chunk_id, chunk);
-
     DLOG_F(INFO, "allocated new chunk %s", CHUNKSTR(chunk));
-    chunk->set_state(ChunkState::kLoadingTerrain);
+    set_chunk_state(chunk, ChunkState::kLoadingTerrain);
 
     pool_.post([this, chunk_id, mesh, chunk]() {
-        // TODO deleted ever?
-        thread_local IGenerator *gen = config::new_generator();
+        thread_local IGenerator *gen = config::new_generator(); // TODO ever deleted?
 
         int ret = gen->generate(chunk_id, seed_, chunk);
         if (ret == kErrorSuccess) {
             DLOG_F(INFO, "successfully generated terrain for %s", CHUNKSTR(chunk));
             chunk->post_terrain_update();
-            chunk->set_state(ChunkState::kLoadedTerrain);
-
-            submit_for_finalization(chunk, false);
+            finalization_queue_.add(chunk_id);
             return;
         }
 
@@ -64,292 +290,64 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     });
 }
 
-
 void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
-    if (chunk != nullptr) {
-        ChunkState state = chunk->get_state();
-        if (state != ChunkState::kUnloading) {
-            if (unload_queue_.add({.chunk_id_=chunk->id(), .allow_cache_=allow_cache})) {// TODO remove this if
-                chunk->set_state(ChunkState::kUnloading);
-                REF_INC(chunk);
-            }
-        }
-    }
-}
+    set_chunk_state(chunk, ChunkState::kUnloaded);
 
-
-int WorldLoader::loaded_chunk_radius_chunk_count() const {
-    return (2 * loaded_chunk_radius_ + 1) * (2 * loaded_chunk_radius_ + 1);
-}
-
-void WorldLoader::tweak_loaded_chunk_radius(int delta) {
-    loaded_chunk_radius_ += delta;
-
-    if (loaded_chunk_radius_ < 1)
-        loaded_chunk_radius_ = 1;
-
-    else
-        LOG_F(INFO, "%s loaded chunk radius to %d", delta > 0 ? "bumped" : "reduced", loaded_chunk_radius_);
-}
-
-void WorldLoader::unload_all_chunks() {
-    for (auto &entry : chunks_) {
-        Chunk *chunk = entry.second;
-        unload_chunk(chunk, false);
-    }
-}
-
-bool ChunkMap::RenderableChunkIterator::next(Chunk **out) {
-    while (iterator_ != end_) {
-        auto &pair = *(iterator_++);
-
-        if (pair.second->get_state() != ChunkState::kRenderable)
-            continue;
-
-        Chunk *chunk = pair.second;
-
-        // return this chunk
-        *out = chunk;
-        return true;
+    {
+        boost::lock_guard lock(renderable_lock_);
+        renderable_.erase(chunk->id());
     }
 
-    // all done
-    return false;
-}
-
-
-void WorldLoader::tick(ChunkId_t world_centre) {
-    // consume uncache queue
-    ChunkUncacheQueue::Entries &uncache = uncache_queue_.swap();
-    for (auto &chunk_id : uncache) {
-        ChunkState state;
-        Chunk *chunk = chunks_.get_chunk(chunk_id, &state);
-
-        if (state == ChunkState::kCached)
-            uncache_chunk(chunk);
-
-        REF_DEC(chunk);
-    }
-
-    // consume finalization queue
-    ChunkFinalizationQueue::Entries &finalization = finalization_queue_.swap();
-    for (auto &it : finalization) {
-        ChunkState state;
-        Chunk *c = chunks_.get_chunk(it.chunk_id_, &state);
-
-        if (state != ChunkState::kLoadedTerrain && state != ChunkState::kRenderable) {
-            LOG_F(WARNING, "wanted to finalize %s its in state %d", ChunkId_str(it.chunk_id_).c_str(), state);
-            if (c != nullptr) REF_DEC(c);
-            continue;
-        }
-
-        ChunkMeshRaw *new_mesh = nullptr;
-        if (it.merely_update_) {
-            new_mesh = mesh_pool_.construct();
-            if (new_mesh == nullptr) {
-                LOG_F(ERROR, "failed to allocate a new mesh from pool?!");
-                unload_chunk(c, false);
-                REF_DEC(c);
-                continue;
-            }
-        }
-
-        pool_.post([this, c, it, new_mesh]() {
-            do_finalization(c, it.merely_update_, new_mesh);
-            REF_DEC(c);
-        });
-    }
-
-    // consume unload queue
-    bool flush_cache = false;
-    ChunkUnloadQueue::Entries &to_unload = unload_queue_.swap();
-    for (auto &it : to_unload) {
-        ChunkId_t chunk_id = it.chunk_id_;
-        DLOG_F(INFO, "unloading %lu (%s)", chunk_id, ChunkId_str(chunk_id).c_str());
-
-        ChunkState state;
-        Chunk *chunk = chunks_.get_chunk(chunk_id, &state);
-
-        if (state != ChunkState::kUnloading) {
-            // nop
-            DLOG_F(WARNING, "wont unload %s because state is %d", ChunkId_str(chunk_id).c_str(), *state);
-            goto next;
-        }
-
-/*
-        if (state == ChunkState::kLoadedTerrain ||
-            state == ChunkState::kLoadingTerrain ||
-            chunk->refs_ != 1) {
-            // in progress, try again next tick
-            // TODO what if they come back into range?
-            if (chunk->refs_ > 1)
-                LOG_F(WARNING, "what on earth, state %d and refs %d", *state, chunk->refs_.load());
-            REF_INC(chunk);
-            unload_queue_.add(it);
-            goto next;
-        }*/
-
-        if (!it.allow_cache_ || 1) {
-            // no caching for you
-            REF_DEC(chunk);
-            if (delete_chunk(chunk))
-                continue; // cant deref deleted chunk
-
-            // did not delete because still in use by another thread, try again next time
-            LOG_F(WARNING, "resubmitting %s for unloading", CHUNKSTR(chunk));
-            REF_INC(chunk);
-            unload_queue_.add(it);
-            continue; // we have already decremented above
-        }
-
-        // dont recache :^)
-        if (state != ChunkState::kCached) {
-            // evict chunks if necessary
-            if (cache_count_ > cache_limit_) {
-                // flush those a certain distance from the player
-                flush_cache = true;
-            }
-
-            chunk->set_state(ChunkState::kCached);
-            cache_count_++;
-            DLOG_F(INFO, "moved %s into cache (%d/%d)", CHUNKSTR(chunk), cache_count_, cache_limit_);
-            goto next;
-        }
-
-        next:
-        REF_DEC(chunk);
-    }
-
-    if (flush_cache || 0)
-        flush_cache_wrt_distance(world_centre);
-
-    // reclaim mesh garbage
-    MeshGarbage::Entries &mesh_garbage = mesh_garbage_.swap();
-    for (ChunkMeshRaw *garbage : mesh_garbage) {
-        mesh_pool_.destroy(garbage);
-    }
-    if (!mesh_garbage.empty())
-            DLOG_F(INFO, "reclaimed %d meshes", mesh_garbage.size());
-}
-
-void WorldLoader::do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh) {
-    ChunkNeighbours neighbours;
-    chunk->neighbours(neighbours);
-
-    bool retry = false;
-    for (int i = 0; i < ChunkNeighbour::kCount; i++) {
-        ChunkNeighbour n_side = i;
-        ChunkId_t n_id = neighbours[i];
-
-        ChunkState n_state;
-        Chunk *n_chunk = chunks_.get_chunk(n_id, &n_state);
-
-        switch (*n_state) {
-            case ChunkState::kUnloaded:
-            case ChunkState::kUnloading:
-            case ChunkState::kCached:
-                // nothing to do with this neighbour
-                continue;
-
-            case ChunkState::kLoadingTerrain:
-                // wait for neighbour to be loaded
-                retry = true;
-                continue;
-
-            case ChunkState::kLoadedTerrain:
-            case ChunkState::kRenderable:
-                // terrain available to merge with
-                bool merged = chunk->merge_faces_with_neighbour(n_chunk, n_side);
-
-                if (merged && !merely_update && n_state == ChunkState::kRenderable) {
-                    // avoid propagation of updates for already complete chunks
-                    DLOG_F(INFO, "posting a merely update finalization task for chunk %s (by chunk %s neighbour %d)",
-                           CHUNKSTR(n_chunk), CHUNKSTR(chunk), i);
-                    submit_for_finalization(n_chunk, true);
-                }
-                break;
-        }
-
-    }
-
-    if (retry) {
-        // try again soon
-        submit_for_finalization(chunk, merely_update);
-        return;
-    }
-
-    // generate mesh and set state to renderable
-    ChunkMeshRaw *old_mesh = chunk->populate_mesh(merely_update ? new_mesh : nullptr);
-
-    if (old_mesh) {
-        mesh_garbage_.add(old_mesh);
-    }
-}
-
-void WorldLoader::submit_for_finalization(Chunk *chunk, bool merely_update) {
-    if (finalization_queue_.add({.chunk_id_=chunk->id(), .merely_update_=merely_update}))
-        REF_INC(chunk);
-    else
-            DLOG_F(WARNING, "tried to submit %s for finalization again!", CHUNKSTR(chunk));
-}
-
-void WorldLoader::uncache_chunk(Chunk *chunk) {
-    chunk->set_state(ChunkState::kLoadedTerrain);
-    submit_for_finalization(chunk, true);
-    cache_count_--;
-    LOG_F(INFO, "recovered %s from the cache (%d/%d left)", CHUNKSTR(chunk), cache_count_, cache_limit_);
-}
-
-bool WorldLoader::delete_chunk(Chunk *chunk) {
-    if (chunk == nullptr)
-        return false;
-
-    ChunkId_t id = chunk->id();
-    int refs = chunk->refs_.load();
-    if (refs != 0) {
-        DLOG_F(WARNING, "UH OH! %s has %d refs upon deletion!", CHUNKSTR(chunk), refs);
-        return false;
-    }
-
-    chunks_.set(id, nullptr);
-
-        ChunkMeshRaw *mesh = chunk->steal_mesh();
-        if (mesh != nullptr)
-            mesh_pool_.destroy(mesh);
-
-//        std::memset(chunk, 0, sizeof(Chunk));
-        chunk_pool_.destroy(chunk);
-    DLOG_F(INFO, "destroyed chunk %s with %d refs", ChunkId_str(id).c_str(), refs);
-    return true;
-}
-
-void WorldLoader::flush_cache_wrt_distance(ChunkId_t world_centre) {
-    // TODO decide a better way
-    const int kMaxDistance = 4; // chunks
-    constexpr int kMaxDistanceSqrd = kMaxDistance * kMaxDistance;
-
-    LOG_F(INFO, "commence flushing");
-
-    int count = 0;
-    int cx, cz;
-    ChunkId_deconstruct(world_centre, cx, cz);
-    for (auto &it : chunks_) {
-        int x, z;
-        ChunkId_deconstruct(it.first, x, z);
-
-        int dx = x - cx;
-        int dz = z - cz;
-        int dst_sqrd = dx * dx + dz * dz;
-        if (dst_sqrd > kMaxDistanceSqrd) {
-            if (it.second->get_state() == ChunkState::kCached) {
-                unload_chunk(it.second, false);
-                count++;
-            }
+    if (allow_cache) {
+        if (chunk_cache_.size() >= cache_limit_) {
+            flush_cache_ = true;
+        } else {
+            // put into cache
+            chunk->reset_for_cache();
+            chunk_cache_[chunk->id()] = chunk;
+            DLOG_F(INFO, "put chunk %s in the cache (%lu/%lu)", CHUNKSTR(chunk), chunk_cache_.size(), cache_limit_);
+            return;
         }
     }
 
-    if (count > 0)
-        LOG_F(INFO, "flushed %d chunks from cache", count);
-    else
-        LOG_F(WARNING, "flushed %d chunks from cache with range limit of %d chunks", count, kMaxDistance);
+    DLOG_F(INFO, "deleting chunk %s", CHUNKSTR(chunk));
+
+    // delete now
+    ChunkMeshRaw *mesh = chunk->steal_mesh();
+    if (mesh != nullptr)
+        mesh_pool_.destroy(mesh);
+
+    chunk_pool_.destroy(chunk);
+}
+
+bool WorldLoader::should_unload(ChunkId_t chunk_id) {
+    auto it = to_unload_.find(chunk_id);
+    bool unload = it != to_unload_.end();
+
+    if (unload) {
+        to_unload_.erase(it);
+
+        Chunk *chunk;
+        get_chunk(chunk_id, &chunk);
+        unload_chunk(chunk);
+    }
+
+    return unload;
+}
+
+void WorldLoader::flush_cache_wrt_distance() {
+    // TODO flush cache
+}
+
+void WorldLoader::get_renderable_chunks(std::vector<ChunkMesh *> &out) {
+    boost::lock_guard lock(renderable_lock_);
+    for (auto &it : renderable_) {
+        out.push_back(it.second);
+    }
+
+    currently_rendering_ = true;
+}
+
+void WorldLoader::finished_rendering() {
+    currently_rendering_ = false;
 }

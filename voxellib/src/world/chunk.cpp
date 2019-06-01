@@ -7,44 +7,13 @@
 #include "centre.h"
 
 
-Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh), state_(ChunkState::kUnloaded) {
+Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh, id) {
 
 }
-
-ChunkState Chunk::get_state() {
-    boost::shared_lock lock(state_lock_);
-    return state_;
-}
-
-void Chunk::post_set_state(ChunkState prev_state, ChunkState new_state) {
-    if (prev_state != new_state) {
-        DLOG_F(INFO, "set state %s : %s -> %s", CHUNKSTR(this), prev_state.str().c_str(), new_state.str().c_str());
-    }
-}
-
-void Chunk::set_state(ChunkState state) {
-    ChunkState old;
-    {
-        boost::unique_lock lock(state_lock_);
-        old = state_;
-        state_ = state;
-    }
-
-    post_set_state(old, state);
-}
-
 // TODO is this even needed?
 bool Chunk::loaded() const {
     // TODO what if mesh is empty because its invisible so mesh is 0?
     return /*terrain_.size() > 0 && */mesh_.has_mesh();
-}
-
-void Chunk::world_offset(glm::ivec3 &out) {
-    int x, z;
-    ChunkId_deconstruct(id_, x, z);
-    out[0] = x * kChunkWidth * kBlockRadius * 2;
-    out[1] = 0;
-    out[2] = z * kChunkDepth * kBlockRadius * 2;
 }
 
 ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
@@ -103,22 +72,9 @@ ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
 
     DLOG_F(INFO, "%s: new mesh is size %lu/%d", CHUNKSTR(this), out_idx, kChunkMeshSize);
 
-    ChunkMeshRaw *old_mesh;
-    ChunkState old_state;
-    {
-        // take lock
-        boost::unique_lock lock(state_lock_);
-
-        // set size and swap out
-        old_mesh = mesh_.on_mesh_update(out_idx, alternate);
-
-        // set state
-        old_state = state_;
-        state_ = ChunkState::kRenderable;
-    }
-    post_set_state(old_state, ChunkState::kRenderable);
+    // set size and swap out
+    ChunkMeshRaw *old_mesh = mesh_.on_mesh_update(out_idx, alternate);
     return old_mesh;
-
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
@@ -156,6 +112,10 @@ void Chunk::neighbours(ChunkNeighbours &out) const {
     };
 }
 
+void Chunk::reset_for_cache() {
+    terrain_.reset_merged_faces();
+}
+
 
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     auto current_chunk = Chunk::owning_chunk(Block::from_world_pos(pos_));
@@ -167,7 +127,9 @@ bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     return changed;
 }
 
-ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh) : mesh_(mesh), dirty_(true) {}
+ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh, ChunkId_t chunk_id) : mesh_(mesh), dirty_(true) {
+    ChunkId_deconstruct(chunk_id, x_, z_);
+}
 
 ChunkMeshRaw *ChunkMesh::steal_mesh() {
     auto tmp = mesh_;
@@ -177,15 +139,16 @@ ChunkMeshRaw *ChunkMesh::steal_mesh() {
 }
 
 ChunkMesh::~ChunkMesh() {
-    if (vao_ != 0) {
-        glDeleteVertexArrays(1, &vao_);
-        vao_ = 0;
-    }
-
-    if (vbo_ != 0) {
-        glDeleteBuffers(1, &vbo_);
-        vbo_ = 0;
-    }
+    // TODO this can only be done from the main thread
+//    if (vao_ != 0) {
+//        glDeleteVertexArrays(1, &vao_);
+//        vao_ = 0;
+//    }
+//
+//    if (vbo_ != 0) {
+//        glDeleteBuffers(1, &vbo_);
+//        vbo_ = 0;
+//    }
 
 }
 
@@ -217,3 +180,10 @@ ChunkMeshRaw *ChunkMesh::on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh)
 
     return nullptr;
 }
+
+void ChunkMesh::world_offset(glm::ivec3 &out) {
+    out[0] = x_ * kChunkWidth * kBlockRadius * 2;
+    out[1] = 0;
+    out[2] = z_ * kChunkDepth * kBlockRadius * 2;
+}
+

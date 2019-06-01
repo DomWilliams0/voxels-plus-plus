@@ -14,7 +14,7 @@ class DoubleBufferedCollection {
 public:
     using Entries = Collection<Entry>;
 
-    Entries &swap() {
+    virtual Entries &swap() {
         boost::lock_guard lock(lock_);
 
         // swap buffers
@@ -24,14 +24,14 @@ public:
         return collections_[read()];
     }
 
-    void add(const Entry &e) {
+    bool add(const Entry &e) {
         boost::lock_guard lock(lock_);
         Entries &write_collection = collections_[write()];
-        insert(write_collection, e);
+        return insert(write_collection, e);
     }
 
 protected:
-    virtual void insert(Entries &entries, const Entry &e) = 0;
+    virtual bool insert(Entries &entries, const Entry &e) = 0;
 
 
 private:
@@ -49,44 +49,49 @@ private:
 class Chunk;
 
 struct ChunkFinalizationEntry {
-    Chunk *chunk_;
+    ChunkId_t chunk_id_;
     bool merely_update_;
 
     friend bool operator==(const ChunkFinalizationEntry &lhs, const ChunkFinalizationEntry &rhs);
 };
 
-// hash is keyed on chunk ptr only
+// hash is keyed on chunk only
 std::size_t hash_value(ChunkFinalizationEntry const &e);
 
 // this is the worst thing ive ever written
 
 class ChunkFinalizationQueue : public DoubleBufferedCollection<ChunkFinalizationEntry, boost::unordered_set> {
 protected:
-    void insert(Entries &entries, const ChunkFinalizationEntry &e) override;
+    bool insert(Entries &entries, const ChunkFinalizationEntry &e) override;
 };
 
 // unloading
 struct ChunkUnloadEntry {
-    Chunk *chunk_;
+    ChunkId_t chunk_id_;
     bool allow_cache_;
 
     friend bool operator==(const ChunkUnloadEntry &lhs, const ChunkUnloadEntry &rhs);
 };
 
-// hash is keyed on chunk ptr only
+// hash is keyed on chunk id, cant be on the ptr because it could be recycled
 std::size_t hash_value(ChunkUnloadEntry const &e);
 
-class ChunkUnloadQueue : public DoubleBufferedCollection<ChunkUnloadEntry, boost::container::vector> {
+class ChunkUnloadQueue : public DoubleBufferedCollection<ChunkUnloadEntry, boost::unordered_set> {
 protected:
-    void insert(Entries &entries, const ChunkUnloadEntry &e) override;
+    bool insert(Entries &entries, const ChunkUnloadEntry &e) override;
 };
 
+// uncache
+class ChunkUncacheQueue : public DoubleBufferedCollection<ChunkId_t, boost::container::vector> {
+protected:
+    bool insert(Entries &entries, const ChunkId_t &e) override;
+};
 
 // mesh garbage
 typedef ChunkMeshRaw *ChunkMeshRaw_ptr;
 
 class MeshGarbage : public DoubleBufferedCollection<ChunkMeshRaw *, boost::container::vector> {
 protected:
-    void insert(Entries &entries, ChunkMeshRaw *const &e) override;
+    bool insert(Entries &entries, ChunkMeshRaw *const &e) override;
 };
 #endif

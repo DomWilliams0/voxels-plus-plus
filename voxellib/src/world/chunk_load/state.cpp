@@ -13,6 +13,8 @@ std::string ChunkState::str() const {
             return "kRenderable";
         case kCached:
             return "kCached";
+        case kUnloading:
+            return "kUnloading";
         default:
             assert(false);
     }

@@ -36,7 +36,7 @@ public:
     // includes chunks that are currently cached too
     void unload_all_chunks();
 
-    void tick();
+    void tick(ChunkId_t world_centre);
 
     inline ChunkMap::RenderableChunkIterator renderable_chunks() const {
         return ChunkMap::RenderableChunkIterator(chunks_);
@@ -51,21 +51,31 @@ private:
     ChunkMap chunks_;
     ChunkFinalizationQueue finalization_queue_;
     ChunkUnloadQueue unload_queue_;
+    ChunkUncacheQueue uncache_queue_;
     MeshGarbage mesh_garbage_;
 
     boost::object_pool<ChunkMeshRaw> mesh_pool_;
     boost::object_pool<Chunk> chunk_pool_;
 
+    unsigned int cache_count_;
+    unsigned int cache_limit_;
+
     // radius around player to load chunks
     int loaded_chunk_radius_;
 
     // move from cache back into business
+    // chunk state must be kCached
     void uncache_chunk(Chunk *chunk);
 
     // free and return back to pool
-    void delete_chunk(Chunk *chunk);
+    bool delete_chunk(Chunk *chunk);
 
     void do_finalization(Chunk *chunk, bool merely_update, ChunkMeshRaw *new_mesh);
+
+    void submit_for_finalization(Chunk *chunk, bool merely_update);
+
+    void flush_cache_wrt_distance(ChunkId_t world_centre);
+
 };
 
 #endif

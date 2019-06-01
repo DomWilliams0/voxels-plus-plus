@@ -18,6 +18,10 @@ void World::register_camera(Camera *camera) {
     centre_.follow(camera);
 }
 
+void World::stop_chunk_loading() {
+    centre_.stop_following();
+}
+
 void World::tick() {
     // move world centre if necessary
     centre_.tick();
@@ -25,7 +29,7 @@ void World::tick() {
     // find chunks to load and unload based on world centre
     update_active_chunks();
 
-    loader_.tick();
+    loader_.tick(centre_.chunk());
 }
 
 void World::update_active_chunks() {
@@ -50,9 +54,8 @@ void World::update_active_chunks() {
 
         ChunkState state;
         loader_.chunkmap().get_chunk(c, &state);
-        if (!state.is_loading()) {
+        if (state == ChunkState::kUnloaded || state == ChunkState::kCached)
             loader_.request_chunk(c); // does not block
-        }
     ITERATOR_CHUNK_SPIRAL_END
 
     // unload chunks out of range

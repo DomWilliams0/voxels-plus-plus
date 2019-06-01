@@ -18,6 +18,9 @@ public:
 
     void register_camera(Camera *camera);
 
+    // slightly temporary
+    void stop_chunk_loading();
+
     void tick();
 
     void clear_all_chunks();

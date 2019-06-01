@@ -137,7 +137,7 @@ void Chunk::post_terrain_update() {
 bool Chunk::merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side) {
     bool should_merge = !terrain_.has_merged_faces(side);
     if (should_merge) {
-        LOG_F(INFO, "merging %s's faces with %s on side %d", CHUNKSTR(this), CHUNKSTR(neighbour_chunk), *side);
+        DLOG_F(INFO, "merging %s's faces with %s on side %d", CHUNKSTR(this), CHUNKSTR(neighbour_chunk), *side);
         terrain_.merge_faces(neighbour_chunk->terrain_, side);
     }
 

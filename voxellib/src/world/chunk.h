@@ -5,6 +5,7 @@
 #include <array>
 #include <boost/thread/shared_mutex.hpp>
 #include "glm/vec3.hpp"
+#include <atomic>
 
 #include "multidim_grid.hpp"
 #include "block.h"
@@ -127,6 +128,11 @@ public:
      * @return Old mesh if swapped, otherwise null
      */
     ChunkMeshRaw *populate_mesh(ChunkMeshRaw *alternate);
+
+#define REF_INC(chunk) do {(chunk)->refs_++; DLOG_F(INFO, "inc %s refs to %d", CHUNKSTR(chunk), (chunk)->refs_.load()); } while (0)
+#define REF_DEC(chunk) do {(chunk)->refs_--; DLOG_F(INFO, "dec %s refs to %d", CHUNKSTR(chunk), (chunk)->refs_.load()); } while (0)
+    std::atomic_int refs_ = 0;
+
 private:
     ChunkId_t id_;
 

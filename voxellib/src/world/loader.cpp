@@ -32,7 +32,7 @@ WorldLoader::WorldLoader(int seed) :
 
     // TODO set based on available memory
     cache_limit_ = 128;
-    LOG_F(INFO, "chunk cache size set to %d", cache_limit_);
+    LOG_F(INFO, "chunk cache size set to %lu", cache_limit_);
 }
 
 void WorldLoader::update_world_centre(ChunkId_t world_centre, int loaded_chunk_radius) {
@@ -346,7 +346,34 @@ bool WorldLoader::should_unload(ChunkId_t chunk_id) {
 }
 
 void WorldLoader::flush_cache_wrt_distance() {
-    // TODO flush cache
+    int cx, cz, load_rad;
+    {
+        boost::shared_lock lock(world_state_.lock_);
+        cx = world_state_.cx_;
+        cz = world_state_.cz_;
+        load_rad = world_state_.load_radius_;
+    }
+
+    const int chunk_flush_max_distance = load_rad; // TODO experiment
+    const int threshold = chunk_flush_max_distance * chunk_flush_max_distance;
+
+    for (auto it = chunk_cache_.begin(); it != chunk_cache_.end(); ) {
+        int x, z;
+        ChunkId_deconstruct(it->first, x, z);
+
+        int dx = cx - x;
+        int dz = cz - z;
+        int dist_sqr = (dx*dx) + (dz+dz);
+
+        if (dist_sqr > threshold) {
+            unload_chunk(it->second, false);
+            it = chunk_cache_.erase(it);
+        }
+        else
+            it++;
+    }
+
+    DLOG_F(INFO, "flushed chunk cache to %lu", chunk_cache_.size());
 }
 
 void WorldLoader::get_renderable_chunks(std::vector<ChunkMesh *> &out) {

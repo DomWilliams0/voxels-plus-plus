@@ -26,6 +26,12 @@ public:
 
     void finished_rendering();
 
+    // glDeleteVertexArrays if vertex array else glDeleteBuffers
+    struct GlGarbage {int buf; bool is_vertex_array;
+        GlGarbage(int buf, bool is_vertex_array) : buf(buf), is_vertex_array(is_vertex_array) {}
+    };
+    void get_gl_goshdarn_garbage(std::vector<GlGarbage> &out);
+
 private:
     WorldLoader(int seed);
     int seed_;
@@ -42,6 +48,9 @@ private:
     unsigned long cache_limit_;
 
     boost::atomic_bool unload_all_chunks_;
+
+    std::vector<GlGarbage> gl_garbage_;
+    boost::mutex gl_garbage_lock_;
 
     // updated each tick by main thread
     struct {

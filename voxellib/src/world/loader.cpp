@@ -319,6 +319,14 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
     if (mesh != nullptr)
         mesh_pool_.destroy(mesh);
 
+    {
+        boost::lock_guard lock(gl_garbage_lock_);
+        if (chunk->mesh()->vao() != 0)
+            gl_garbage_.emplace_back(chunk->mesh()->vao(), true);
+        if (chunk->mesh()->vbo() != 0)
+            gl_garbage_.emplace_back(chunk->mesh()->vbo(), false);
+    }
+
     chunk_pool_.destroy(chunk);
 }
 
@@ -352,4 +360,9 @@ void WorldLoader::get_renderable_chunks(std::vector<ChunkMesh *> &out) {
 
 void WorldLoader::finished_rendering() {
     currently_rendering_ = false;
+}
+
+void WorldLoader::get_gl_goshdarn_garbage(std::vector<WorldLoader::GlGarbage> &out) {
+    boost::lock_guard lock(gl_garbage_lock_);
+    out = std::move(gl_garbage_);
 }

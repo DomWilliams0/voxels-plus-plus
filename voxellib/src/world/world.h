@@ -33,6 +33,10 @@ public:
 
     inline void finished_rendering() { loader_->finished_rendering(); }
 
+    inline void get_gl_goshdarn_garbage(std::vector<WorldLoader::GlGarbage> &out) {
+        loader_->get_gl_goshdarn_garbage(out);
+    }
+
 private:
     WorldCentre centre_;
     int loaded_chunk_radius_;

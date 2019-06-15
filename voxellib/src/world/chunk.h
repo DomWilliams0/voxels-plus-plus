@@ -49,8 +49,6 @@ class ChunkMesh {
 public:
     ChunkMesh(ChunkMeshRaw *mesh, ChunkId_t chunk_id);
 
-    ~ChunkMesh();
-
     inline int mesh_size() const { return mesh_size_; }
 
     inline bool has_mesh() const { return mesh_ != nullptr; }

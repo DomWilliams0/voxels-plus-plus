@@ -138,20 +138,6 @@ ChunkMeshRaw *ChunkMesh::steal_mesh() {
     return tmp;
 }
 
-ChunkMesh::~ChunkMesh() {
-    // TODO this can only be done from the main thread
-//    if (vao_ != 0) {
-//        glDeleteVertexArrays(1, &vao_);
-//        vao_ = 0;
-//    }
-//
-//    if (vbo_ != 0) {
-//        glDeleteBuffers(1, &vbo_);
-//        vbo_ = 0;
-//    }
-
-}
-
 bool ChunkMesh::prepare_render() {
     if (mesh_ == nullptr) {
         LOG_F(WARNING, "mesh for %d, %d is missing, skipping", x_, z_);

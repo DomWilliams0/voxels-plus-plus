@@ -152,14 +152,16 @@ ChunkMesh::~ChunkMesh() {
 
 }
 
-void ChunkMesh::prepare_render() {
+bool ChunkMesh::prepare_render() {
+    if (mesh_ == nullptr) {
+        LOG_F(WARNING, "mesh for %d, %d is missing, skipping", x_, z_);
+        return false;
+    }
+
     if (vao_ == 0 || vbo_ == 0) {
         glGenBuffers(1, &vbo_);
         glGenVertexArrays(1, &vao_);
     }
-
-    if (mesh_ == nullptr)
-        throw std::runtime_error("expected mesh to be non-null");
 
     if (dirty_) {
         dirty_ = false;
@@ -167,6 +169,7 @@ void ChunkMesh::prepare_render() {
         glBufferData(GL_ARRAY_BUFFER, mesh_size_ * sizeof(int), mesh_, GL_STATIC_DRAW);
     }
 
+    return true;
 }
 
 ChunkMeshRaw *ChunkMesh::on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh) {

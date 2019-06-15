@@ -73,7 +73,8 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
 
     glm::ivec3 world_transform;
     for (ChunkMesh *mesh : renderables_) {
-        mesh->prepare_render();
+        if (!mesh->prepare_render())
+            continue;
 
         // enable chunk
         // TODO can we use the same vao for all chunks?

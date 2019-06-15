@@ -62,7 +62,8 @@ public:
     inline ChunkMeshRaw &mesh() { return *mesh_; }
 
     // must be run in main thread
-    void prepare_render();
+    // returns if successful
+    bool prepare_render();
 
     // new_mesh is optional, if non-null is swapped in and old mesh is returned
     ChunkMeshRaw *on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh);

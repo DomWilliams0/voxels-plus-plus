@@ -295,7 +295,9 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
 
     {
         boost::lock_guard lock(renderable_lock_);
-        renderable_.erase(chunk->id());
+        int n = renderable_.erase(chunk->id());
+        if (n > 0)
+            DLOG_F(INFO, "removed renderable chunk %s", CHUNKSTR(chunk));
     }
 
     if (allow_cache) {
@@ -324,7 +326,7 @@ bool WorldLoader::should_unload(ChunkId_t chunk_id) {
     auto it = to_unload_.find(chunk_id);
     bool unload = it != to_unload_.end();
 
-    if (unload) {
+    if (unload && !currently_rendering_) {
         to_unload_.erase(it);
 
         Chunk *chunk;
@@ -340,12 +342,12 @@ void WorldLoader::flush_cache_wrt_distance() {
 }
 
 void WorldLoader::get_renderable_chunks(std::vector<ChunkMesh *> &out) {
+    currently_rendering_ = true;
+
     boost::lock_guard lock(renderable_lock_);
     for (auto &it : renderable_) {
         out.push_back(it.second);
     }
-
-    currently_rendering_ = true;
 }
 
 void WorldLoader::finished_rendering() {

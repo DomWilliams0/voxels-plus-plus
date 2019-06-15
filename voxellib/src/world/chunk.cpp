@@ -116,6 +116,14 @@ void Chunk::reset_for_cache() {
     terrain_.reset_merged_faces();
 }
 
+void Chunk::mark_load_time_now() {
+    load_time_ = boost::posix_time::microsec_clock::local_time();
+}
+
+bool Chunk::was_loaded_before(boost::posix_time::ptime barrier) const {
+    return load_time_ <= barrier;
+}
+
 
 bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     auto current_chunk = Chunk::owning_chunk(Block::from_world_pos(pos_));

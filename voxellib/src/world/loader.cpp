@@ -42,7 +42,11 @@ void WorldLoader::update_world_centre(ChunkId_t world_centre, int loaded_chunk_r
 }
 
 void WorldLoader::tick() {
-    // TODO handle unload all
+    // handle unload all
+    if (unload_all_chunks_) {
+        really_unload_all_chunks();
+        unload_all_chunks_ = false;
+    }
 
     // determine new chunks to load and unload
     int cx, cz;
@@ -81,7 +85,6 @@ void WorldLoader::tick() {
     // first pass to update states
     for (auto it = finalization.begin(); it != finalization.end();) {
         ChunkId_t c = *it;
-        // TODO check load time
 
         // marked for unload
         if (should_unload(c) || get_chunk(c) == ChunkState::kUnloaded) {
@@ -247,8 +250,6 @@ void WorldLoader::set_chunk_state(ChunkId_t chunk_id, ChunkState new_state) {
 
 
 void WorldLoader::request_chunk(ChunkId_t chunk_id) {
-    // TODO set requested timestamp
-
     // check cache
     auto cache_result = chunk_cache_.find(chunk_id);
     if (cache_result != chunk_cache_.end()) {
@@ -272,6 +273,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     }
 
     DLOG_F(INFO, "allocated new chunk %s", CHUNKSTR(chunk));
+    chunk->mark_load_time_now();
     set_chunk_state(chunk, ChunkState::kLoadingTerrain);
 
     pool_.post([this, chunk_id, mesh, chunk]() {
@@ -331,14 +333,15 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
 }
 
 bool WorldLoader::should_unload(ChunkId_t chunk_id) {
+    Chunk *chunk;
+    get_chunk(chunk_id, &chunk);
+
+    // check if in unload set or was loaded before unload barrier
     auto it = to_unload_.find(chunk_id);
-    bool unload = it != to_unload_.end();
+    bool unload = it != to_unload_.end() && !chunk->was_loaded_before(unload_barrier_);
 
     if (unload && !currently_rendering_) {
         to_unload_.erase(it);
-
-        Chunk *chunk;
-        get_chunk(chunk_id, &chunk);
         unload_chunk(chunk);
     }
 
@@ -392,4 +395,46 @@ void WorldLoader::finished_rendering() {
 void WorldLoader::get_gl_goshdarn_garbage(std::vector<WorldLoader::GlGarbage> &out) {
     boost::lock_guard lock(gl_garbage_lock_);
     out = std::move(gl_garbage_);
+}
+
+void WorldLoader::really_unload_all_chunks() {
+    LOG_F(INFO, "unloading all chunks");
+
+    // unload all before now
+    unload_barrier_ = boost::posix_time::microsec_clock::local_time();
+
+    // no more rendering
+    {
+        boost::lock_guard lock(renderable_lock_);
+        renderable_.clear();
+    }
+
+    // wait for render to finish
+    while (currently_rendering_) {}
+
+    for (auto it = chunks_.begin(); it != chunks_.end(); it++) {
+        ChunkState state = it->second.second;
+        switch (*state) {
+            case ChunkState::kUnloaded:
+                // nop
+                break;
+            case ChunkState::kLoadingTerrain:
+            case ChunkState::kLoadedTerrain:
+                // nop, will be cleansed by unload time barrier
+                break;
+
+            case ChunkState::kRenderable:
+                unload_chunk(it->second.first, false);
+                break;
+        }
+    }
+    chunks_.clear();
+
+    // clear cache
+    for (auto &it : chunk_cache_) {
+        unload_chunk(it.second, false);
+    }
+    chunk_cache_.clear();
+
+    to_unload_.clear();
 }

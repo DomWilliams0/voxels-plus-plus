@@ -51,6 +51,6 @@ void World::tweak_loaded_chunk_radius(int delta) {
 }
 
 World::~World() {
-    clear_all_chunks();
+    loader_->unload_all_chunks();
 }
 

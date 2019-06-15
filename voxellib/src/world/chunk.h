@@ -126,8 +126,14 @@ public:
 
     inline ChunkMesh *mesh() { return &mesh_; }
 
+    // set load time to now
+    void mark_load_time_now();
+
+    bool was_loaded_before(boost::posix_time::ptime barrier) const;
+
 private:
     ChunkId_t id_;
+    boost::posix_time::ptime load_time_;
 
     ChunkTerrain terrain_;
     ChunkMesh mesh_;

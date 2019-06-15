@@ -165,7 +165,11 @@ int NativeGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
     if ((ret = ensure_handle()) != kErrorSuccess)
         return ret;
 
-    return kFunc(x, z, seed, terrain_out);
+    {
+        // hold lock while inside function
+        boost::shared_lock<boost::shared_mutex> lock(kHandleMutex);
+        return kFunc(x, z, seed, terrain_out);
+    }
 }
 
 void NativeGenerator::mark_dirty() {

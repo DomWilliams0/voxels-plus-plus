@@ -94,6 +94,8 @@ private:
 
     void flush_cache_wrt_distance();
 
+    void really_unload_all_chunks();
+
 };
 
 #endif

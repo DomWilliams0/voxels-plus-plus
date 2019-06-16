@@ -418,8 +418,10 @@ void WorldLoader::really_unload_all_chunks() {
     // wait for render to finish
     while (currently_rendering_) {}
 
-    for (auto it = chunks_.begin(); it != chunks_.end(); it++) {
-        ChunkState state = it->second.second;
+    // move to temporary map to avoid invalidating iterators
+    auto chunks_copy = std::move(chunks_);
+    for (auto &it : chunks_copy) {
+        ChunkState state = it.second.second;
         switch (*state) {
             case ChunkState::kUnloaded:
                 // nop
@@ -430,11 +432,10 @@ void WorldLoader::really_unload_all_chunks() {
                 break;
 
             case ChunkState::kRenderable:
-                unload_chunk(it->second.first, false);
+                unload_chunk(it.second.first, false);
                 break;
         }
     }
-    chunks_.clear();
 
     // clear cache
     for (auto &it : chunk_cache_) {

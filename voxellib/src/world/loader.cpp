@@ -24,11 +24,8 @@ WorldLoader *WorldLoader::create(int seed) {
 WorldLoader::WorldLoader(int seed) :
         seed_(seed),
         pool_(config::kTerrainThreadWorkers),
-        unload_barrier_(boost::posix_time::microsec_clock::local_time()) {
-    int loaded_chunk_radius_count = loaded_radius_chunk_count(config::kInitialLoadedChunkRadius);
-
-    mesh_pool_.set_next_size(loaded_chunk_radius_count * 2); // large buffer
-    chunk_pool_.set_next_size(loaded_chunk_radius_count);
+        unload_barrier_(boost::posix_time::microsec_clock::local_time()),
+        chunk_pool_(128), mesh_pool_(128) {
 
     // TODO set based on available memory
     cache_limit_ = 128;
@@ -162,14 +159,14 @@ void WorldLoader::tick() {
 
             // new mesh to swap out with current mesh for renderable chunks
             if (state == ChunkState::kRenderable)
-                new_mesh = mesh_pool_.construct();
+                new_mesh = mesh_pool_.new_object();
 
             // generate mesh
             ChunkMeshRaw *old_mesh = chunk->populate_mesh(new_mesh);
 
             // reclaim old mesh
             if (old_mesh != nullptr) {
-                mesh_pool_.destroy(old_mesh);
+                mesh_pool_.delete_object(old_mesh);
             }
 
             // update state to renderable
@@ -263,12 +260,12 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     }
 
     // allocate chunk and mesh from pools
-    ChunkMeshRaw *mesh = mesh_pool_.construct();
-    Chunk *chunk = chunk_pool_.construct(chunk_id, mesh);
+    ChunkMeshRaw *mesh = mesh_pool_.new_object();
+    Chunk *chunk = chunk_pool_.new_object(chunk_id, mesh);
     if (mesh == nullptr || chunk == nullptr) {
         LOG_F(ERROR, "failed to allocate new chunk: mesh=%p, chunk=%p", mesh, chunk);
-        if (mesh) mesh_pool_.destroy(mesh);
-        if (chunk) chunk_pool_.destroy(chunk);
+        if (mesh) mesh_pool_.delete_object(mesh);
+        if (chunk) chunk_pool_.delete_object(chunk);
         return;
     }
 
@@ -319,7 +316,7 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
     // delete now
     ChunkMeshRaw *mesh = chunk->steal_mesh();
     if (mesh != nullptr)
-        mesh_pool_.destroy(mesh);
+        mesh_pool_.delete_object(mesh);
 
     {
         boost::lock_guard lock(gl_garbage_lock_);
@@ -329,7 +326,7 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
             gl_garbage_.emplace_back(chunk->mesh()->vbo(), false);
     }
 
-    chunk_pool_.destroy(chunk);
+    chunk_pool_.delete_object(chunk);
 }
 
 bool WorldLoader::should_unload(ChunkId_t chunk_id) {

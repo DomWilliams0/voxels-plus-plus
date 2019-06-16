@@ -1,7 +1,6 @@
 #ifndef VOXELS_LOADER_H
 #define VOXELS_LOADER_H
 
-#include <boost/pool/object_pool.hpp>
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/atomic.hpp>
@@ -9,6 +8,7 @@
 #include "chunk.h"
 #include "threadpool.h"
 #include "world/chunk_load/double_buffered.h"
+#include "object_pool.hpp"
 
 // lives in another thread
 class WorldLoader {
@@ -68,8 +68,8 @@ private:
     boost::unordered_set<ChunkId_t> to_unload_;
     boost::unordered_set<ChunkId_t> per_frame_chunks_;
 
-    boost::object_pool<ChunkMeshRaw> mesh_pool_;
-    boost::object_pool<Chunk> chunk_pool_;
+    DynamicObjectPool<ChunkMeshRaw> mesh_pool_;
+    DynamicObjectPool<Chunk> chunk_pool_;
 
     void tick();
 

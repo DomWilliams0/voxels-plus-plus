@@ -24,6 +24,9 @@ add_compile_definitions(${PROJECT_NAME} PROCGEN_BIN="${procgen_BINARY_DIR}/libpr
 # thread pool
 add_subdirectory(threadpool)
 
+# object pool
+set(SOURCES ${SOURCES} lib/objectpool/src/object_pool.cpp lib/objectpool/src/object_pool.hpp)
+
 # create library
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
@@ -32,6 +35,7 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
             src/
             lib/
+            lib/objectpool/src
         )
 
 # linkage

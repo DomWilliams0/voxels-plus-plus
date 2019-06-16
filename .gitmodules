@@ -7,3 +7,6 @@
 [submodule "voxellib/threadpool/DKit"]
 	path = voxellib/threadpool/DKit
 	url = https://github.com/drbobbeaty/DKit.git
+[submodule "voxellib/lib/objectpool"]
+	path = voxellib/lib/objectpool
+	url = https://github.com/bitshifter/objectpool.git

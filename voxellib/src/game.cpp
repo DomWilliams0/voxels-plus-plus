@@ -140,6 +140,8 @@ void Game::handle_keypress(SDL_Keycode key, bool down) {
         renderer_.toggle_wireframe();
     else if (key == SDLK_r && !down)
         world_.clear_all_chunks();
+    else if (key == SDLK_u && !down)
+        world_.stop_chunk_loading();
     else if (key == SDLK_UP && !down)
         world_.tweak_loaded_chunk_radius(+1);
     else if (key == SDLK_DOWN && !down)

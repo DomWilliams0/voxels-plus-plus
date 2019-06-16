@@ -18,33 +18,35 @@ public:
 
     void register_camera(Camera *camera);
 
+    // slightly temporary
+    void stop_chunk_loading();
+
     void tick();
 
     void clear_all_chunks();
 
     void tweak_loaded_chunk_radius(int delta);
 
-    inline int loaded_chunk_radius() const { return loader_.loaded_chunk_radius(); }
+    inline int loaded_chunk_radius() const { return loaded_chunk_radius_; }
 
-    inline int loaded_chunk_count() const { return loader_.loaded_chunk_radius_chunk_count(); }
+    inline void get_renderable_chunks(std::vector<ChunkMesh *> &out) { loader_->get_renderable_chunks(out); }
 
-    inline ChunkMap::RenderableChunkIterator renderable_chunks() const { return loader_.renderable_chunks(); }
+    inline void finished_rendering() { loader_->finished_rendering(); }
 
-//    static bool is_in_loaded_range(int centre_x, int centre_z, int load_radius, int chunk_x, int chunk_z);
+    inline void get_gl_goshdarn_garbage(std::vector<WorldLoader::GlGarbage> &out) {
+        loader_->get_gl_goshdarn_garbage(out);
+    }
 
 private:
-    std::unordered_set<ChunkId_t> per_frame_chunks_; // used to find which chunks should be unloaded
-
     WorldCentre centre_;
+    int loaded_chunk_radius_;
 
     struct {
         glm::vec3 position_;
         glm::vec3 direction_;
     } spawn_;
 
-    WorldLoader loader_;
-
-    void update_active_chunks();
+    WorldLoader *loader_;
 };
 
 

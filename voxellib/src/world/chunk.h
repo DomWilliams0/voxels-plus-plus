@@ -5,6 +5,7 @@
 #include <array>
 #include <boost/thread/shared_mutex.hpp>
 #include "glm/vec3.hpp"
+#include <atomic>
 
 #include "multidim_grid.hpp"
 #include "block.h"
@@ -37,15 +38,16 @@ inline std::string ChunkId_str(ChunkId_t id) {
 // helper
 #define CHUNKSTR(c) (ChunkId_str(c->id()).c_str())
 
+inline unsigned int loaded_radius_chunk_count(int radius) {
+    return (2 * radius + 1) * (2 * radius + 1);
+}
 
 typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
 
 class ChunkMesh {
 
 public:
-    ChunkMesh(ChunkMeshRaw *mesh);
-
-    ~ChunkMesh();
+    ChunkMesh(ChunkMeshRaw *mesh, ChunkId_t chunk_id);
 
     inline int mesh_size() const { return mesh_size_; }
 
@@ -58,7 +60,8 @@ public:
     inline ChunkMeshRaw &mesh() { return *mesh_; }
 
     // must be run in main thread
-    void prepare_render();
+    // returns if successful
+    bool prepare_render();
 
     // new_mesh is optional, if non-null is swapped in and old mesh is returned
     ChunkMeshRaw *on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh);
@@ -66,12 +69,20 @@ public:
     // takes ownership of mesh, sets field to null
     ChunkMeshRaw *steal_mesh();
 
+    /**
+     * @param out Set to the block pos of the bottom corner of this chunk
+     */
+    void world_offset(glm::ivec3 &out);
+
 private:
     ChunkMeshRaw *mesh_;
     unsigned int mesh_size_ = 0;
 
     unsigned int vao_ = 0, vbo_ = 0;
     bool dirty_;
+
+    // chunk coords
+    int x_, z_;
 };
 
 typedef std::array<ChunkId_t, ChunkNeighbour::kCount> ChunkNeighbours;
@@ -82,25 +93,12 @@ public:
 
     inline ChunkId_t id() const { return id_; }
 
-    inline unsigned int vao() const { return mesh_.vao(); }
-
-    inline unsigned int vbo() const { return mesh_.vbo(); }
-
     /**
      * @return If terrain and mesh are initialised
      */
     bool loaded() const;
 
-    /**
-     * @param out Set to the block pos of the bottom corner of this chunk
-     */
-    void world_offset(glm::ivec3 &out);
-
-    inline int vertex_count() const { return mesh_.mesh_size(); }
-
     inline ChunkMeshRaw *steal_mesh() { return mesh_.steal_mesh(); }
-
-    inline void prepare_render() { mesh_.prepare_render(); }
 
     /**
      * @param block_pos Global block pos
@@ -109,10 +107,6 @@ public:
     static ChunkId_t owning_chunk(const glm::ivec3 &block_pos);
 
     void neighbours(ChunkNeighbours &out) const;
-
-    ChunkState get_state();
-
-    void set_state(ChunkState state);
 
     void post_terrain_update();
 
@@ -127,18 +121,24 @@ public:
      * @return Old mesh if swapped, otherwise null
      */
     ChunkMeshRaw *populate_mesh(ChunkMeshRaw *alternate);
+
+    void reset_for_cache();
+
+    inline ChunkMesh *mesh() { return &mesh_; }
+
+    // set load time to now
+    void mark_load_time_now();
+
+    bool was_loaded_before(boost::posix_time::ptime barrier) const;
+
 private:
     ChunkId_t id_;
+    boost::posix_time::ptime load_time_;
 
     ChunkTerrain terrain_;
     ChunkMesh mesh_;
 
-    ChunkState state_;
-    boost::shared_mutex state_lock_;
-
     friend class IGenerator; // to allow direct access to terrain_
-
-    void post_set_state(ChunkState prev_state, ChunkState new_state);
 };
 
 

@@ -15,10 +15,10 @@ namespace config {
     // number of worker threads for terrain generation
     // terrain.threads
     // defaults to hardware limit if 0/not present
-    extern int kTerrainThreadWorkers;
+    extern unsigned int kTerrainThreadWorkers;
 
     // radius of chunks around player to load
-    extern int kInitialLoadedChunkRadius;
+    extern unsigned int kInitialLoadedChunkRadius;
 
 
     // loads from config.json

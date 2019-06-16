@@ -1,3 +1,4 @@
+#include <jemalloc/jemalloc.h>
 #include "error.h"
 #include "util.h"
 #include "loader.h"
@@ -25,7 +26,7 @@ WorldLoader::WorldLoader(int seed) :
         seed_(seed),
         pool_(config::kTerrainThreadWorkers),
         unload_barrier_(boost::posix_time::microsec_clock::local_time()),
-        chunk_pool_(128), mesh_pool_(128) {
+        chunk_pool_(128) {
 
     // TODO set based on available memory
     cache_limit_ = 128;
@@ -155,19 +156,20 @@ void WorldLoader::tick() {
             finalization_queue_.add(c);
             continue;
         } else {
-            ChunkMeshRaw *new_mesh = nullptr;
+            // fill temporary buffer to calculate size
+            static ChunkMeshRaw tmp_mesh;
 
-            // new mesh to swap out with current mesh for renderable chunks
-            if (state == ChunkState::kRenderable)
-                new_mesh = mesh_pool_.new_object();
+            // populate it and get length
+            unsigned long tmp_mesh_len = chunk->populate_mesh(tmp_mesh);
 
-            // generate mesh
-            ChunkMeshRaw *old_mesh = chunk->populate_mesh(new_mesh);
+            // alloc mesh of that length and copy in
+            ChunkMeshRaw *new_mesh = alloc_mesh(tmp_mesh_len);
+            std::copy(std::cbegin(tmp_mesh), std::cbegin(tmp_mesh) + tmp_mesh_len, std::begin(*new_mesh));
 
-            // reclaim old mesh
-            if (old_mesh != nullptr) {
-                mesh_pool_.delete_object(old_mesh);
-            }
+            // swap out and reclaim old mesh
+            ChunkMeshRaw *old_mesh = chunk->mesh()->on_mesh_update(tmp_mesh_len, new_mesh);
+            if (old_mesh != nullptr)
+                dealloc_mesh(old_mesh);
 
             // update state to renderable
             if (state != ChunkState::kRenderable) {
@@ -259,13 +261,10 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
         return;
     }
 
-    // allocate chunk and mesh from pools
-    ChunkMeshRaw *mesh = mesh_pool_.new_object();
-    Chunk *chunk = chunk_pool_.new_object(chunk_id, mesh);
-    if (mesh == nullptr || chunk == nullptr) {
-        LOG_F(ERROR, "failed to allocate new chunk: mesh=%p, chunk=%p", mesh, chunk);
-        if (mesh) mesh_pool_.delete_object(mesh);
-        if (chunk) chunk_pool_.delete_object(chunk);
+    // allocate chunk from pool
+    Chunk *chunk = chunk_pool_.new_object(chunk_id);
+    if (chunk == nullptr) {
+        LOG_F(ERROR, "failed to allocate new chunk");
         return;
     }
 
@@ -273,7 +272,7 @@ void WorldLoader::request_chunk(ChunkId_t chunk_id) {
     chunk->mark_load_time_now();
     set_chunk_state(chunk, ChunkState::kLoadingTerrain);
 
-    pool_.post([this, chunk_id, mesh, chunk]() {
+    pool_.post([this, chunk_id, chunk]() {
         thread_local IGenerator *gen = config::new_generator(); // TODO ever deleted?
 
         int ret = gen->generate(chunk_id, seed_, chunk);
@@ -314,9 +313,9 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
     DLOG_F(INFO, "deleting chunk %s", CHUNKSTR(chunk));
 
     // delete now
-    ChunkMeshRaw *mesh = chunk->steal_mesh();
+    ChunkMeshRaw *mesh = chunk->mesh()->steal_mesh();
     if (mesh != nullptr)
-        mesh_pool_.delete_object(mesh);
+        dealloc_mesh(mesh);
 
     {
         boost::lock_guard lock(gl_garbage_lock_);
@@ -368,8 +367,7 @@ void WorldLoader::flush_cache_wrt_distance() {
         if (dist_sqr > threshold) {
             unload_chunk(it->second, false);
             it = chunk_cache_.erase(it);
-        }
-        else
+        } else
             it++;
     }
 
@@ -434,4 +432,13 @@ void WorldLoader::really_unload_all_chunks() {
     chunk_cache_.clear();
 
     to_unload_.clear();
+}
+
+ChunkMeshRaw *WorldLoader::alloc_mesh(unsigned long length) {
+    void *ret = mallocx(length * sizeof(ChunkMeshRaw::value_type), MALLOCX_ARENA(0));
+    return static_cast<ChunkMeshRaw *>(ret);
+}
+
+void WorldLoader::dealloc_mesh(ChunkMeshRaw *mesh) {
+    dallocx(mesh, 0);
 }

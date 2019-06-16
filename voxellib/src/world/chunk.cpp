@@ -7,7 +7,7 @@
 #include "centre.h"
 
 
-Chunk::Chunk(ChunkId_t id, ChunkMeshRaw *mesh) : id_(id), mesh_(mesh, id) {
+Chunk::Chunk(ChunkId_t id) : id_(id), mesh_(id) {
 
 }
 // TODO is this even needed?
@@ -16,9 +16,7 @@ bool Chunk::loaded() const {
     return /*terrain_.size() > 0 && */mesh_.has_mesh();
 }
 
-ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
-    ChunkMeshRaw &mesh = alternate == nullptr ? mesh_.mesh() : *alternate;
-
+unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
     ChunkTerrain::BlockCoord block_pos;
     size_t out_idx = 0;
 
@@ -71,10 +69,7 @@ ChunkMeshRaw *Chunk::populate_mesh(ChunkMeshRaw *alternate) {
     }
 
     DLOG_F(INFO, "%s: new mesh is size %lu/%d", CHUNKSTR(this), out_idx, kChunkMeshSize);
-
-    // set size and swap out
-    ChunkMeshRaw *old_mesh = mesh_.on_mesh_update(out_idx, alternate);
-    return old_mesh;
+    return out_idx;
 }
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
@@ -135,7 +130,7 @@ bool WorldCentre::chunk(ChunkId_t &chunk_out) {
     return changed;
 }
 
-ChunkMesh::ChunkMesh(ChunkMeshRaw *mesh, ChunkId_t chunk_id) : mesh_(mesh), dirty_(true) {
+ChunkMesh::ChunkMesh(ChunkId_t chunk_id) : mesh_(nullptr), dirty_(true) {
     ChunkId_deconstruct(chunk_id, x_, z_);
 }
 

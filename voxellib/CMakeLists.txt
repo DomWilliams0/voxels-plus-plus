@@ -48,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}
             GLEW::GLEW
             SDL2::Main
             imgui
+            jemalloc
         PUBLIC
             glm
             threadpool

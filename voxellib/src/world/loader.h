@@ -68,7 +68,6 @@ private:
     boost::unordered_set<ChunkId_t> to_unload_;
     boost::unordered_set<ChunkId_t> per_frame_chunks_;
 
-    DynamicObjectPool<ChunkMeshRaw> mesh_pool_;
     DynamicObjectPool<Chunk> chunk_pool_;
 
     void tick();
@@ -95,6 +94,10 @@ private:
     void flush_cache_wrt_distance();
 
     void really_unload_all_chunks();
+
+    ChunkMeshRaw *alloc_mesh(unsigned long length);
+
+    void dealloc_mesh(ChunkMeshRaw *mesh);
 
 };
 

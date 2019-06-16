@@ -47,7 +47,7 @@ typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
 class ChunkMesh {
 
 public:
-    ChunkMesh(ChunkMeshRaw *mesh, ChunkId_t chunk_id);
+    ChunkMesh(ChunkId_t chunk_id);
 
     inline int mesh_size() const { return mesh_size_; }
 
@@ -89,7 +89,7 @@ typedef std::array<ChunkId_t, ChunkNeighbour::kCount> ChunkNeighbours;
 
 class Chunk {
 public:
-    Chunk(ChunkId_t id, ChunkMeshRaw *mesh);
+    Chunk(ChunkId_t id);
 
     inline ChunkId_t id() const { return id_; }
 
@@ -97,8 +97,6 @@ public:
      * @return If terrain and mesh are initialised
      */
     bool loaded() const;
-
-    inline ChunkMeshRaw *steal_mesh() { return mesh_.steal_mesh(); }
 
     /**
      * @param block_pos Global block pos
@@ -117,10 +115,8 @@ public:
     bool merge_faces_with_neighbour(Chunk *neighbour_chunk, ChunkNeighbour side);
 
     /**
-     * @param alternate If not null, is swapped with current mesh
-     * @return Old mesh if swapped, otherwise null
      */
-    ChunkMeshRaw *populate_mesh(ChunkMeshRaw *alternate);
+    unsigned long populate_mesh(ChunkMeshRaw &mesh);
 
     void reset_for_cache();
 

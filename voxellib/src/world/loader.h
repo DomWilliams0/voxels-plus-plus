@@ -41,32 +41,33 @@ private:
     boost::unordered_map<ChunkId_t, ChunkMesh *> renderable_;
     boost::mutex renderable_lock_;
 
-    boost::atomic_bool currently_rendering_;
+    boost::atomic_bool currently_rendering_ {false};
 
     boost::unordered_map<ChunkId_t, std::pair<Chunk *, ChunkState>> chunks_;
     boost::unordered_map<ChunkId_t, Chunk *> chunk_cache_;
     unsigned long cache_limit_;
 
-    boost::atomic_bool unload_all_chunks_;
+    boost::atomic_bool unload_all_chunks_ {false};
 
     std::vector<GlGarbage> gl_garbage_;
     boost::mutex gl_garbage_lock_;
 
     // updated each tick by main thread
     struct {
-        int cx_, cz_;
-        int load_radius_;
+        int cx_ {0};
+        int cz_ {0};
+        int load_radius_ {0};
         boost::shared_mutex lock_;
     } world_state_;
 
-    DoubleBufferedSet<ChunkId_t> finalization_queue_;
+    DoubleBufferedSet<ChunkId_t> finalization_queue_ {};
 
-    bool flush_cache_;
+    bool flush_cache_ {false};
 
     boost::posix_time::ptime unload_barrier_;
 
-    boost::unordered_set<ChunkId_t> to_unload_;
-    boost::unordered_set<ChunkId_t> per_frame_chunks_;
+    boost::unordered_set<ChunkId_t> to_unload_ {};
+    boost::unordered_set<ChunkId_t> per_frame_chunks_ {};
 
     DynamicObjectPool<Chunk> chunk_pool_;
 

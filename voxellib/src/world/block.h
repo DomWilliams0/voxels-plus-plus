@@ -5,10 +5,12 @@
 #include "face.h"
 #include "constants.h"
 
+// TODO upgrade enum
 enum class BlockType : int8_t {
     kAir = 0,
     kGrass,
     kStone,
+    kDarkStone,
     kMarker,
 };
 
@@ -16,6 +18,7 @@ const static long kBlockTypeColours[] = {
         0xfffffff,  // kAir
         0xff007815, // kGrass
         0xff828282, // kStone
+        0xff444444, // kDarkStone
         0xffff0d00, // kMarker
 };
 

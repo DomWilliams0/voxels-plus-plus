@@ -14,7 +14,9 @@
 class WorldLoader {
 
 public:
-    static WorldLoader *create(int seed);
+    static WorldLoader *create(int seed, boost::thread **thread_out);
+
+    ~WorldLoader();
 
     void update_world_centre(ChunkId_t world_centre, int loaded_chunk_radius);
 
@@ -32,9 +34,12 @@ public:
     };
     void get_gl_goshdarn_garbage(std::vector<GlGarbage> &out);
 
+    void stop();
+
 private:
     WorldLoader(int seed);
     int seed_;
+    bool running_{true};
 
     ThreadPool pool_;
 

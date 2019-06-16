@@ -14,8 +14,6 @@ class World {
 public:
     World(glm::vec3 spawn_pos = {0, 0, 0}, glm::vec3 spawn_dir = {1, 0, 0});
 
-    ~World();
-
     void register_camera(Camera *camera);
 
     // slightly temporary
@@ -37,16 +35,20 @@ public:
         loader_->get_gl_goshdarn_garbage(out);
     }
 
+    // gracefully stop all threads
+    void cleanup();
+
 private:
-    WorldCentre centre_;
+    WorldCentre centre_ {};
     int loaded_chunk_radius_;
 
     struct {
-        glm::vec3 position_;
-        glm::vec3 direction_;
+        glm::vec3 position_ {};
+        glm::vec3 direction_ {};
     } spawn_;
 
     WorldLoader *loader_;
+    boost::thread *loader_thread_;
 };
 
 

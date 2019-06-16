@@ -7,16 +7,19 @@
 #include "iterators.h"
 #include "generation/generator.h"
 
-WorldLoader *WorldLoader::create(int seed) {
+WorldLoader *WorldLoader::create(int seed, boost::thread **thread_out) {
     WorldLoader *loader = new WorldLoader(seed);
-    boost::thread thread([loader]() {
+    *thread_out = new boost::thread([loader]() {
         // wait a tad for game to properly start :^)
         boost::this_thread::sleep(boost::posix_time::milliseconds(100));
-        while (1) {
+        while (loader->running_) {
             loader->tick();
             boost::this_thread::yield();
-            // TODO sleep?
         }
+
+        LOG_F(INFO, "loader thread exiting");
+        loader->pool_.shutdown();
+        delete loader;
     });
 
     return loader;
@@ -31,6 +34,11 @@ WorldLoader::WorldLoader(int seed) :
     // TODO set based on available memory
     cache_limit_ = 128;
     LOG_F(INFO, "chunk cache size set to %lu", cache_limit_);
+}
+
+WorldLoader::~WorldLoader() {
+    chunk_pool_.delete_all();
+    chunk_pool_.reclaim_memory();
 }
 
 void WorldLoader::update_world_centre(ChunkId_t world_centre, int loaded_chunk_radius) {
@@ -372,6 +380,9 @@ void WorldLoader::flush_cache_wrt_distance() {
     }
 
     DLOG_F(INFO, "flushed chunk cache to %lu", chunk_cache_.size());
+
+    // might as well do this here
+    chunk_pool_.reclaim_memory();
 }
 
 void WorldLoader::get_renderable_chunks(std::vector<ChunkMesh *> &out) {
@@ -441,4 +452,8 @@ ChunkMeshRaw *WorldLoader::alloc_mesh(unsigned long length) {
 
 void WorldLoader::dealloc_mesh(ChunkMeshRaw *mesh) {
     dallocx(mesh, 0);
+}
+
+void WorldLoader::stop() {
+    running_ = false;
 }

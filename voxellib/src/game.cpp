@@ -149,7 +149,7 @@ void Game::handle_keypress(SDL_Keycode key, bool down) {
 }
 
 void Game::cleanup() {
-    // TODO cleanup world
+    world_.cleanup();
     ui_.cleanup();
 }
 

@@ -10,7 +10,7 @@
 World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) :
         spawn_{.position_=spawn_pos, .direction_=spawn_dir},
         loaded_chunk_radius_(config::kInitialLoadedChunkRadius) {
-    loader_ = WorldLoader::create(50);
+    loader_ = WorldLoader::create(50, &loader_thread_);
 }
 
 void World::register_camera(Camera *camera) {
@@ -50,7 +50,8 @@ void World::tweak_loaded_chunk_radius(int delta) {
     centre_.reset();
 }
 
-World::~World() {
-    loader_->unload_all_chunks();
+void World::cleanup() {
+    loader_->stop();
+    loader_thread_->join();
+    delete loader_thread_;
 }
-

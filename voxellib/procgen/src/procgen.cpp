@@ -23,7 +23,7 @@ double perlin_scaled(int x, int z, int seed, double scale) {
 }
 
 int generate(int chunk_x, int chunk_z, int seed, ChunkTerrain &terrain_out) {
-    const double scale = 0.7;
+    const double scale = 0.9;
 
     for (unsigned int bx = 0; bx < kChunkWidth; bx++) {
         for (unsigned int bz = 0; bz < kChunkDepth; bz++) {

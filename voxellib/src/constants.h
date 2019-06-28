@@ -12,9 +12,9 @@ const int kBlockScale = 2;
 // /2 again because radius, not diameter
 const float kBlockRadius = 1.f / kBlockScale / 2.f;
 
-const int kChunkWidthShift = 4; // 16
-const int kChunkHeightShift = 6; // 16 TODO change to 10 = 1024
-const int kChunkDepthShift = 4; // 16
+const int kChunkWidthShift = 5; // 32
+const int kChunkHeightShift = 6; // 64 TODO change to 10 = 1024
+const int kChunkDepthShift = 5; // 32
 
 const int kChunkWidth = 1 << kChunkWidthShift;
 const int kChunkHeight = 1 << kChunkHeightShift;

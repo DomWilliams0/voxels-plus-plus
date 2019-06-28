@@ -39,7 +39,7 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
             if (!block.face_visibility_.visible(face))
                 continue;
 
-            int stride = 6 * 3; // 6 vertices * 6 floats per face
+            int stride = 6 * 3; // 6 vertices * 3 floats per face (TODO add normals)
             const float *verts = kBlockVertices + (stride * (int) face);
 
             union {
@@ -47,7 +47,7 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
                 int i;
             } f_or_i;
 
-            for (int v = 0; v < 6; ++v) {
+            for (int v = 0; v < kFaceCount; ++v) {
                 // vertex pos in chunk space
                 int v_idx = v * 3;
                 for (int j = 0; j < 3; ++j) {
@@ -57,13 +57,13 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
                 // colour
                 int colour = kBlockTypeColours[static_cast<int>(block.type_)];
                 mesh[out_idx++] = colour;
-                assert(out_idx < kChunkMeshSize);
-/*
+
                 // ao
-                char ao_idx = ao_get_vertex(block.ao, face, v);
-                float ao = AO_CURVE[ao_idx];
+                float ao = block.ao_.get_vertex(face, v);
                 f_or_i.f = ao;
-                buffer[out_idx++] = f_or_i.i;*/
+                mesh[out_idx++] = f_or_i.i;
+
+                assert(out_idx < kChunkMeshSize);
             }
         }
     }

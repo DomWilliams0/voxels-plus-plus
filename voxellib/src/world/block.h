@@ -28,7 +28,8 @@ inline bool BlockType_opaque(BlockType bt) {
 
 struct Block {
     BlockType type_;
-    FaceVisibility face_visibility_;
+    FaceVisibility face_visibility_ {};
+    AmbientOcclusion ao_ {};
 
     Block(BlockType type = BlockType::kAir) : type_(type) {}
 

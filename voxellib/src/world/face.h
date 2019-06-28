@@ -25,7 +25,7 @@ const enum Face kFaces[kFaceCount] = {
         kBack
 };
 
-void face_offset(Face face, size_t *out);
+void face_offset(Face face, int *out);
 
 Face face_opposite(Face face);
 
@@ -40,6 +40,54 @@ public:
     // no faces visible
     bool invisible() const;
 
+};
+
+// ambient occlusion
+// 2 bits per 4 unique vertices per 6 faces
+const int kAoBitCount = 2 * 4 * 6;
+
+class AmbientOcclusion {
+public:
+    AmbientOcclusion() : bits_(kAll) {}
+
+    float get_vertex(Face face, int vertex) const;
+
+    struct Builder {
+        enum Vertex {
+            kV05 = 0,
+            kV1,
+            kV23,
+            kV4
+        };
+        const static int kVertexCount = 4;
+
+        Builder();
+
+        static void get_face_offsets(Face face, Vertex vertex, Face &a_out, Face &b_out);
+
+        void set_vertex(Face face, AmbientOcclusion::Builder::Vertex vertex, bool s1, bool s2,
+                        bool corner);
+
+        // write out bits to AO
+        void build(AmbientOcclusion &out) const;
+
+        void set_brightest();
+
+    private:
+        int values_[kFaceCount][kVertexCount];
+
+    };
+
+private:
+    unsigned long bits_ : kAoBitCount;
+
+    // block level
+    const static unsigned long kNone = 0;
+    const static unsigned long kAll = ((1L << kAoBitCount) - 1);
+
+    // vertex level
+    const static int kVertexNone = 3; // both bits set
+    const static int kVertexFull = 0; // both bits clear
 };
 
 

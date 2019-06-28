@@ -62,3 +62,25 @@ TEST_CASE("range check", "[world]") {
     REQUIRE(!World::is_in_loaded_range(0, 0, 5, -2, 10));
     REQUIRE(!World::is_in_loaded_range(0, 0, 5, 100, 0));
 }*/
+
+TEST_CASE("ao bits", "[world]") {
+    SECTION("bit setting") {
+        AmbientOcclusion out;
+        AmbientOcclusion::Builder builder;
+        Face face = Face::kTop;
+        auto vertex = AmbientOcclusion::Builder::kV1;
+
+        // initially full brightness
+        REQUIRE(out.get_vertex(face, vertex) == 1.0);
+
+        // fully occluded
+        builder.set_vertex(face, vertex, true, true, true);
+        builder.build(out);
+        REQUIRE(out.get_vertex(face, vertex) == 0.0);
+
+        // cleared again
+        builder.set_vertex(face, vertex, false, false, false);
+        builder.build(out);
+        REQUIRE(out.get_vertex(face, vertex) == 1.0);
+    }
+}

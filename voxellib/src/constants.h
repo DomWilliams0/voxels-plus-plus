@@ -27,9 +27,9 @@ const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
 const int kFloatsPerVertex = 3;
 
 /**
- * vec3f (pos) + vec4b (colour)
+ * vec3f (pos) + vec4b (colour) + float (ao)
  */
-const int kChunkMeshWordsPerVertexInstance = 3 + 1 /*+ 1*/;
+const int kChunkMeshWordsPerVertexInstance = 3 + 1 + 1;
 
 /**
  * 12 triangles

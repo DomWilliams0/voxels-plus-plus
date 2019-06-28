@@ -94,6 +94,9 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
             glEnableVertexAttribArray(1);
             glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, true, stride, reinterpret_cast<const void *>(3L * word_size));
 
+            // 2: ao
+            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(2, 1, GL_FLOAT, false, stride, reinterpret_cast<const void *>((3L + 1L) * word_size));
         }
 
         // update view with chunk world offset

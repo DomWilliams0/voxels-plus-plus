@@ -41,8 +41,7 @@ private:
 class ChunkTerrain {
 public:
     typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> GridType;
-//    typedef std::array<ChunkTerrain::GridType::size_type, ChunkTerrain> BlockCoord;
-    typedef ChunkTerrain::GridType::ArrayCoord BlockCoord;
+    typedef std::array<int, 3> BlockCoord;
 
     Block &operator[](unsigned int flat_index);
 
@@ -62,6 +61,13 @@ public:
 
 private:
     GridType grid_;
+
+    bool is_visible(const BlockCoord &pos, Face face, bool bounds_check, bool *was_out_of_bounds);
+
+    static bool is_out_of_bounds(const BlockCoord &pos);
+
+    void calculate_vertex_ao(AmbientOcclusion::Builder &ao, AmbientOcclusion::Builder::Vertex vertex,
+                                    ChunkTerrain::BlockCoord offset_pos, Face face);
 
     template<size_t dim1, size_t dim2>
     struct NeighbourOpacity {

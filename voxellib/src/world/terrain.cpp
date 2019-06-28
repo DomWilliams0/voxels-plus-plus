@@ -28,16 +28,60 @@ void ChunkTerrain::expand(unsigned int index, BlockCoord &out) {
     std::copy(expanded.cbegin(), expanded.cend(), out.begin());
 }
 
+bool ChunkTerrain::is_visible(const BlockCoord &src, Face face, bool bounds_check, bool *was_out_of_bounds) {
+    BlockCoord offset(src);
+    face_offset(face, offset.data());
+
+    // check for out of bounds
+    if (bounds_check && is_out_of_bounds(offset)) {
+        // not visible for now, will be updated later
+        *was_out_of_bounds = true;
+        return false;
+    }
+
+    // safe to cast from signed to unsigned and deref now
+    Block &offset_block = (*this)[{static_cast<unsigned long>(offset[0]),
+                                   static_cast<unsigned long>(offset[1]),
+                                   static_cast<unsigned long>(offset[2])}];
+    return BlockType_opaque(offset_block.type_);
+}
+
+
+bool ChunkTerrain::is_out_of_bounds(const ChunkTerrain::BlockCoord &pos) {
+    return pos[0] < 0 || pos[0] >= kChunkWidth || pos[2] < 0 || pos[2] >= kChunkDepth;
+}
+
+void ChunkTerrain::calculate_vertex_ao(AmbientOcclusion::Builder &ao, AmbientOcclusion::Builder::Vertex vertex,
+                                       ChunkTerrain::BlockCoord offset_pos, Face face) {
+    Face fa, fb;
+    ao.get_face_offsets(face, vertex, fa, fb);
+
+    BlockCoord fa_pos(offset_pos);
+    face_offset(fa, fa_pos.data());
+
+    bool abort = false;
+    bool s1 = is_visible(offset_pos, fa, true, &abort);
+    if (abort) return;
+
+    bool s2 = is_visible(offset_pos, fb, true, &abort);
+    if (abort) return;
+
+    bool corner = is_visible(fa_pos, fb, false, NULL); // dont need to check corner for out of bounds
+    ao.set_vertex(face, vertex, s1, s2, corner);
+}
+
 void ChunkTerrain::update_face_visibility() {
     BlockCoord pos;
     for (int i = 0; i < kBlocksPerChunk; ++i) {
         Block &b = (*this)[i];
 
-        FaceVisibility visibility = b.face_visibility_;
+        FaceVisibility &visibility = b.face_visibility_;
+        AmbientOcclusion::Builder ao;
 
         if (!BlockType_opaque(b.type_)) {
-            // fully visible because transparent
+            // fully visible and not occluded because transparent
             visibility.set_fully_visible();
+            ao.set_brightest();
         } else {
             expand(i, pos);
 
@@ -46,7 +90,7 @@ void ChunkTerrain::update_face_visibility() {
             for (int j = 0; j < kFaceCount; ++j) {
                 offset_pos = pos; // reset
                 Face face = kFaces[j];
-                face_offset(face, offset_pos.data_);
+                face_offset(face, offset_pos.data());
 
                 // facing top/bottom of world, so this face is visible
                 if (offset_pos[1] < 0 || offset_pos[1] >= kChunkHeight) {
@@ -55,19 +99,30 @@ void ChunkTerrain::update_face_visibility() {
                 }
 
                 // faces chunk boundary, will be updated later
-                if (offset_pos[0] < 0 || offset_pos[0] >= kChunkWidth ||
-                    offset_pos[2] < 0 || offset_pos[2] >= kChunkDepth) {
+                if (is_out_of_bounds(offset_pos)) {
                     visibility.set_face_visible(face, true);
+                    ao.set_brightest(); // looks funny if the edge of the world goes dark
                     continue;
                 }
 
-                // inside this chunk, safe to get the block type (rather ugly...)
-                Block &offset_block = (*this)[offset_pos];
-                visibility.set_face_visible(face, !BlockType_opaque(offset_block.type_));
+                // inside this chunk, safe to get the block type
+                Block &offset_block = (*this)[{static_cast<unsigned long>(offset_pos[0]),
+                                               static_cast<unsigned long>(offset_pos[1]),
+                                               static_cast<unsigned long>(offset_pos[2])}];
+                bool offset_opaque = BlockType_opaque(offset_block.type_);
+                visibility.set_face_visible(face, !offset_opaque);
+
+                // update ao for visible faces only
+                if (!offset_opaque) {
+                    calculate_vertex_ao(ao, AmbientOcclusion::Builder::kV05, offset_pos, face);
+                    calculate_vertex_ao(ao, AmbientOcclusion::Builder::kV1, offset_pos, face);
+                    calculate_vertex_ao(ao, AmbientOcclusion::Builder::kV23, offset_pos, face);
+                    calculate_vertex_ao(ao, AmbientOcclusion::Builder::kV4, offset_pos, face);
+                }
             }
         }
 
-        b.face_visibility_ = visibility;
+        ao.build(b.ao_);
     }
 
 }

@@ -152,11 +152,11 @@ void WorldLoader::tick() {
 
         bool update_mesh;
 
-        // more cpu intensive but smoother experience
-        update_mesh = true; // populate no matter what
+        // more cpu intensive but might be a smoother experience
+//        update_mesh = true; // populate no matter what
 
         // less cpu intensive but less smooth
-        // update_mesh = neighbours_done == ChunkNeighbour::kCount;
+         update_mesh = neighbours_done == ChunkNeighbour::kCount;
 
         if (!update_mesh) {
             // try again next tick

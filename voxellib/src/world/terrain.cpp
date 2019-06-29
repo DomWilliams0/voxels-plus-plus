@@ -15,22 +15,28 @@ ChunkNeighbour ChunkNeighbour::opposite() const {
     }
 }
 
-Block &ChunkTerrain::operator[](unsigned int flat_index) {
-    return grid_[grid_.unflatten(flat_index)];
+ChunkTerrain::ChunkTerrain() : grid_(Block()){
+
 }
 
-Block &ChunkTerrain::operator[](const GridType::ArrayCoord &coord) {
+Block &ChunkTerrain::operator[](GridIndex flat_index) {
+    return grid_[flat_index];
+}
+
+Block &ChunkTerrain::operator[](const BlockGrid::Coord &coord) {
     return grid_[coord];
 }
 
-const Block &ChunkTerrain::operator[](const GridType::ArrayCoord &coord) const {
+const Block &ChunkTerrain::operator[](const BlockGrid::Coord &coord) const {
     return grid_[coord];
 }
 
 const Block &ChunkTerrain::operator[](const BlockCoord &coord) const {
+    // unsigned to signed conversion
     assert(coord[0] >= 0);
     assert(coord[1] >= 0);
     assert(coord[2] >= 0);
+
     return grid_[{
             static_cast<unsigned long>(coord[0]),
             static_cast<unsigned long>(coord[1]),
@@ -39,8 +45,12 @@ const Block &ChunkTerrain::operator[](const BlockCoord &coord) const {
 }
 
 void ChunkTerrain::expand(unsigned int index, BlockCoord &out) {
-    GridType::ArrayCoord expanded = grid_.unflatten(index);
-    std::copy(expanded.cbegin(), expanded.cend(), out.begin());
+    BlockGrid::Coord expanded;
+    grid_.unflatten(index, expanded);
+
+    out[0] = expanded.x;
+    out[1] = expanded.y;
+    out[2] = expanded.z;
 }
 
 bool

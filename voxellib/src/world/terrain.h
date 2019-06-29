@@ -4,7 +4,7 @@
 #include <array>
 #include <bitset>
 
-#include "multidim_grid.hpp"
+#include "multidim.h"
 #include "block.h"
 
 class ChunkNeighbour {
@@ -40,18 +40,22 @@ private:
 // TODO vertical subchunks
 class ChunkTerrain {
 public:
-    typedef multidim::Grid<Block, kChunkWidth, kChunkHeight, kChunkDepth> GridType;
-    typedef std::array<int, 3> BlockCoord;
+    typedef Grid<Block, Coords3D<kChunkWidth, kChunkHeight, kChunkDepth>> BlockGrid;
+    typedef std::array<signed int, 3> BlockCoord; // local block coord in a chunk
 
-    Block &operator[](unsigned int flat_index);
+    ChunkTerrain();
 
-    Block &operator[](const GridType::ArrayCoord &coord);
+    // delegates
+    Block &operator[](GridIndex flat_index);
 
-    const Block &operator[](const GridType::ArrayCoord &coord) const;
+    Block &operator[](const BlockGrid::Coord &coord);
+
+    const Block &operator[](const BlockGrid::Coord &coord) const;
 
     const Block &operator[](const BlockCoord &coord) const;
 
     void expand(unsigned int index, BlockCoord &out);
+
 
     void update_face_visibility();
 
@@ -64,7 +68,7 @@ public:
     inline void reset_merged_faces() { merged_sides_.reset(); }
 
 private:
-    GridType grid_;
+    BlockGrid grid_;
 
     std::bitset<ChunkNeighbour::kCount> merged_sides_;
 
@@ -77,24 +81,10 @@ private:
     void calculate_ao(AmbientOcclusion::Builder &ao, ChunkTerrain::BlockCoord offset_pos, Face face);
 
 
+    // TODO bits instead of huge bools
     template<size_t dim1, size_t dim2>
-    struct NeighbourOpacity {
-        typedef bool Bit; // TODO bits instead of huge bools
-        typedef multidim::Grid<Bit, dim1, dim2> OpacityGridType;
-
-        NeighbourOpacity() = default;
-        NeighbourOpacity(const NeighbourOpacity &o) : grid_(o.grid_) {}
-
-        constexpr inline Bit &operator[](const typename OpacityGridType::ArrayCoord &coord) {
-            return grid_[coord];
-        }
-
-        constexpr inline Bit operator[](const typename OpacityGridType::ArrayCoord &coord) const {
-            return grid_[coord];
-        }
-
-    private:
-        OpacityGridType grid_;
+    struct NeighbourOpacity : public Grid<bool, Coords2D<dim1, dim2>> {
+        NeighbourOpacity() : Grid<bool, Coords2D<dim1, dim2>>(false) {}
     };
 
     struct {

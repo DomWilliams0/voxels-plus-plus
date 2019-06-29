@@ -7,7 +7,6 @@
 #include "glm/vec3.hpp"
 #include <atomic>
 
-#include "multidim_grid.hpp"
 #include "block.h"
 #include "constants.h"
 #include "chunk_load/state.h"

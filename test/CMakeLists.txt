@@ -1,6 +1,6 @@
 project(voxels_test)
 
-set(SOURCES test_world.cpp main.cpp catch.hpp)
+set(SOURCES test_world.cpp test_multidim.cpp main.cpp catch.hpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

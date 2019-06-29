@@ -133,7 +133,6 @@ void WorldLoader::tick() {
                 case ChunkState::kRenderable:
                 case ChunkState::kLoadedTerrain:
                     // terrain available to merge with
-                    // TODO use result?
                     bool merged = chunk->merge_faces_with_neighbour(n_chunk, n_side);
                     neighbours_done++;
 

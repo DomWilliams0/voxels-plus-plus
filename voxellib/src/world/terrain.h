@@ -47,6 +47,10 @@ public:
 
     Block &operator[](const GridType::ArrayCoord &coord);
 
+    const Block &operator[](const GridType::ArrayCoord &coord) const;
+
+    const Block &operator[](const BlockCoord &coord) const;
+
     void expand(unsigned int index, BlockCoord &out);
 
     void update_face_visibility();
@@ -62,12 +66,16 @@ public:
 private:
     GridType grid_;
 
-    bool is_visible(const BlockCoord &pos, Face face, bool bounds_check, bool *was_out_of_bounds);
+    std::bitset<ChunkNeighbour::kCount> merged_sides_;
 
-    static bool is_out_of_bounds(const BlockCoord &pos);
+    bool is_opaque_internal_only(const BlockCoord &src, Face face, bool bounds_check, bool *was_out_of_bounds);
 
-    void calculate_vertex_ao(AmbientOcclusion::Builder &ao, AmbientOcclusion::Builder::Vertex vertex,
-                                    ChunkTerrain::BlockCoord offset_pos, Face face);
+    static bool is_out_of_bounds_in_another_chunk(const BlockCoord &pos);
+
+    static bool is_out_of_bounds_invalid(const BlockCoord &pos);
+
+    void calculate_ao(AmbientOcclusion::Builder &ao, ChunkTerrain::BlockCoord offset_pos, Face face);
+
 
     template<size_t dim1, size_t dim2>
     struct NeighbourOpacity {
@@ -94,7 +102,15 @@ private:
         NeighbourOpacity<kChunkWidth, kChunkHeight> left_, right_;
     } neighbour_opacity_;
 
-    std::bitset<ChunkNeighbour::kCount> merged_sides_;
+    template<size_t dim1, size_t dim2>
+    bool is_opaque_perhaps_in_neighbour(const BlockCoord &pos,
+                                        const NeighbourOpacity<dim1, dim2> &neighbour_opacity,
+                                        int idx1, int idx2);
+
+    template<size_t dim1, size_t dim2>
+    void calculate_edge_ao(Block &block, const BlockCoord &pos,
+                           const NeighbourOpacity<dim1, dim2> &neighbour_opacity,
+                           int idx1, int idx2);
 };
 
 

@@ -1,27 +1,45 @@
 #include <cassert>
+#include <constants.h>
 #include "face.h"
 
-void face_offset(Face face, int *out) {
+void face_offset_with_copy(Face face, const int *in, int *out) {
+    out[0] = in[0];
+    out[1] = in[1];
+    out[2] = in[2];
+    face_offset(face, in, out);
+}
+
+void face_offset(Face face, const int *in, int *out) {
     switch (face) {
         case kFront:
-            out[0]--;
+            // -x
+            out[0] = in[0] - 1;
             break;
         case kLeft:
-            out[2]--;
+            // -z
+            out[2] = in[2] - 1;
             break;
         case kRight:
-            out[2]++;
+            // +z
+            out[2] = in[2] + 1;
             break;
         case kTop:
-            out[1]++;
+            // +y
+            out[1] = in[1] + 1;
             break;
         case kBottom:
-            out[1]--;
+            // -y
+            out[1] = in[1] - 1;
             break;
         case kBack:
-            out[0]++;
+            // +x
+            out[0] = in[0] + 1;
             break;
     }
+}
+
+void face_offset(Face face, int *out) {
+    face_offset(face, out, out);
 }
 
 Face face_opposite(Face face) {
@@ -53,7 +71,6 @@ void FaceVisibility::set_fully_visible() {
 }
 
 void FaceVisibility::set_face_visible(Face face, bool visible) {
-    int bit = face;
     set(face, visible);
 }
 
@@ -116,17 +133,23 @@ void AmbientOcclusion::Builder::get_face_offsets(Face face, AmbientOcclusion::Bu
 void AmbientOcclusion::Builder::set_vertex(Face face, AmbientOcclusion::Builder::Vertex vertex, bool s1, bool s2,
                                            bool corner) {
     int val = (s1 && s2 ? kVertexFull : (kVertexNone - (s1 + s2 + corner)));
-    values_[face][vertex] = val;
+    auto &value = values_[face];
+    value.dirty_ = true;
+    value.vertices_[vertex] = val;
 }
 
 void AmbientOcclusion::Builder::build(AmbientOcclusion &out) const {
     for (Face face : kFaces) {
-        const int *values = values_[face];
+        auto value = values_[face];
+        if (!value.dirty_)
+            continue;
+
+        const int *vertices = value.vertices_;
         unsigned long byte =
-                values[0] << 0 | // v05
-                values[1] << 2 | // v1
-                values[2] << 4 | // v23
-                values[3] << 6;  // v4
+                vertices[0] << 0 | // v05
+                vertices[1] << 2 | // v1
+                vertices[2] << 4 | // v23
+                vertices[3] << 6;  // v4
 
         unsigned long face_shift = face * 8;
 
@@ -137,18 +160,12 @@ void AmbientOcclusion::Builder::build(AmbientOcclusion &out) const {
 
 }
 
-AmbientOcclusion::Builder::Builder() {
-    for (Face face : kFaces) {
-        for (int vertex = 0; vertex < kVertexCount; ++vertex) {
-            values_[face][vertex] = kVertexFull;
-        }
-    }
-}
-
 void AmbientOcclusion::Builder::set_brightest() {
     for (Face face : kFaces) {
+        auto &val = values_[face];
+        val.dirty_ = true;
         for (int vertex = 0; vertex < kVertexCount; ++vertex) {
-            values_[face][vertex] = kVertexNone;
+            val.vertices_[vertex] = kVertexNone;
         }
     }
 }

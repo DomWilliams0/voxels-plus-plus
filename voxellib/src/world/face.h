@@ -27,6 +27,10 @@ const enum Face kFaces[kFaceCount] = {
 
 void face_offset(Face face, int *out);
 
+void face_offset_with_copy(Face face, const int *in, int *out);
+
+void face_offset(Face face, const int *in, int *out);
+
 Face face_opposite(Face face);
 
 class FaceVisibility : std::bitset<kFaceCount> {
@@ -52,6 +56,8 @@ public:
 
     float get_vertex(Face face, int vertex) const;
 
+    // TODO should flip quad(face)
+
     struct Builder {
         enum Vertex {
             kV05 = 0,
@@ -60,8 +66,7 @@ public:
             kV4
         };
         const static int kVertexCount = 4;
-
-        Builder();
+        constexpr static Vertex kVertices[] = {kV05, kV1, kV23, kV4};
 
         static void get_face_offsets(Face face, Vertex vertex, Face &a_out, Face &b_out);
 
@@ -74,7 +79,10 @@ public:
         void set_brightest();
 
     private:
-        int values_[kFaceCount][kVertexCount];
+        struct {
+            bool dirty_ = 0;
+            int vertices_[kVertexCount];
+        } values_[kFaceCount]{0};
 
     };
 

@@ -8,8 +8,10 @@
 #include "generation/generator.h"
 
 World::World(glm::vec3 spawn_pos, glm::vec3 spawn_dir) :
-        spawn_{.position_=spawn_pos, .direction_=spawn_dir},
         loaded_chunk_radius_(config::kInitialLoadedChunkRadius) {
+    spawn_.position_ = spawn_pos;
+    spawn_.direction_ = spawn_dir;
+
     loader_ = WorldLoader::create(50, &loader_thread_);
 }
 

@@ -201,8 +201,8 @@ bool ChunkTerrain::is_opaque_perhaps_in_neighbour(const BlockCoord &pos,
         BlockCoord neighbour_pos(pos);
         if (neighbour_pos[idx1] < 0) neighbour_pos[idx1] += dim1;
         if (neighbour_pos[idx2] < 0) neighbour_pos[idx2] += dim2;
-        if (neighbour_pos[idx1] >= dim1) neighbour_pos[idx1] -= dim1;
-        if (neighbour_pos[idx2] >= dim2) neighbour_pos[idx2] -= dim2;
+        if (neighbour_pos[idx1] >= static_cast<int>(dim1)) neighbour_pos[idx1] -= dim1;
+        if (neighbour_pos[idx2] >= static_cast<int>(dim2)) neighbour_pos[idx2] -= dim2;
 
         // read from neighbour
         assert(neighbour_pos[idx1] >= 0 && neighbour_pos[idx2] >= 0);

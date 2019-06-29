@@ -4,6 +4,7 @@ set(SOURCES threadpool.cpp threadpool.h)
 set(SOURCES ${SOURCES} DKit/src/spmc/LinkedFIFO.h DKit/src/FIFO.h)
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)
 
 find_package(Boost REQUIRED COMPONENTS thread)
 target_link_libraries(${PROJECT_NAME} Boost::thread)

@@ -19,6 +19,9 @@ int IGenerator::generate(ChunkId_t chunk_id, int seed, Chunk *chunk) {
 }
 
 int DummyGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
+    UNUSED(chunk_id);
+    UNUSED(seed);
+
     // ground
     for (size_t x = 0; x < kChunkWidth; ++x) {
         for (size_t z = 0; z < kChunkDepth; ++z) {
@@ -53,8 +56,9 @@ static size_t recv_all(int s, void *buf, size_t len) {
 }
 
 int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
+    UNUSED(seed);
+
     // open socket
-    int sock;
     int ret;
     if ((ret = get_socket()) != kErrorSuccess)
         return ret;
@@ -75,11 +79,11 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
     int32_t buf[kBlocksPerChunk] = {0};
     size_t n_expected = kBlocksPerChunk * sizeof(int32_t);
     size_t n;
-    n = send(sock, &req, sizeof(req), 0);
+    n = send(sock_, &req, sizeof(req), 0);
     DLOG_F(INFO, "sent %zu/%lu bytes", n, sizeof(req));
 
     // read resp
-    n = recv_all(sock, buf, n_expected);
+    n = recv_all(sock_, buf, n_expected);
     LOG_F(INFO, "recvd %zu/%zu bytes", n, n_expected);
 
     if (n != n_expected) {

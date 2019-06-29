@@ -171,6 +171,8 @@ void AmbientOcclusion::Builder::set_brightest() {
 }
 
 float AmbientOcclusion::get_vertex(Face face, int vertex) const {
+    assert(vertex < 6);
+
     int real_idx;
     switch (vertex) {
         case 0:
@@ -188,8 +190,8 @@ float AmbientOcclusion::get_vertex(Face face, int vertex) const {
             real_idx = 3;
             break;
         default:
-            assert(false); // vertex must be < 6
-            break;
+            // caught by assert above already
+            return 0;
     }
 
     int byte_mask_shift = face * 8;

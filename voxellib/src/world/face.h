@@ -81,8 +81,8 @@ public:
     private:
         struct {
             bool dirty_ = 0;
-            int vertices_[kVertexCount];
-        } values_[kFaceCount]{0};
+            int vertices_[kVertexCount] = {0};
+        } values_[kFaceCount];
 
     };
 

@@ -20,4 +20,4 @@ add_library(${PROJECT_NAME} SHARED
 
 find_package(SDL2 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL2::Main)
-target_compile_options(${PROJECT_NAME} PUBLIC -O0)
+target_compile_options(${PROJECT_NAME} PRIVATE -O0)

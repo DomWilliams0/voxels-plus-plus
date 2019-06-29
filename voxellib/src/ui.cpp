@@ -45,7 +45,7 @@ void Ui::do_frame(const Camera &camera, const World &world) {
     // Rendering
     ImGui::Render();
     SDL_GL_MakeCurrent(window_, gl_);
-    ImGuiIO &io = ImGui::GetIO();
+//    ImGuiIO &io = ImGui::GetIO();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 

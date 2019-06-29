@@ -3,9 +3,9 @@
 #include "threadpool.h"
 #include "../lib/loguru/loguru.hpp"
 
-ThreadPool::ThreadPool(unsigned int threads) : run_(true), workers_(threads) {
+ThreadPool::ThreadPool(unsigned int threads) : workers_(threads), run_(true) {
     if (threads == 0) throw std::runtime_error("thread must be > 0");
-    for (int i = 0; i < threads; ++i) {
+    for (unsigned int i = 0; i < threads; ++i) {
         workers_[i] = boost::thread(Worker(*this));
     }
 }

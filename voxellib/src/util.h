@@ -12,4 +12,6 @@
  */
 void resolve_resource_path(std::string &out, const char *relative_path);
 
+#define UNUSED(x) ((void)(x))
+
 #endif

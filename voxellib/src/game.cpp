@@ -48,7 +48,7 @@ int Game::run() {
     ui_.init(window_, kGlslVersion, &gl);
 
     // init camera
-    CameraState last_camera_state;
+//    CameraState last_camera_state;
     world_.register_camera(&camera_);
 
     // timestep

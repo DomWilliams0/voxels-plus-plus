@@ -9,7 +9,7 @@ set(SOURCES src/game.cpp src/game.h src/world/world.cpp src/world/world.h src/er
 add_subdirectory(lib/imgui EXCLUDE_FROM_ALL)
 
 # fastnoise
-set(SOURCES ${SOURCES} lib/FastNoise/FastNoise.h lib/FastNoise/FastNoise.cpp)
+add_library(FastNoise STATIC lib/FastNoise/FastNoise.h lib/FastNoise/FastNoise.cpp)
 
 # glm
 add_subdirectory(lib/glm EXCLUDE_FROM_ALL)
@@ -54,3 +54,5 @@ target_link_libraries(${PROJECT_NAME}
             threadpool
 )
 
+# errors
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Werror)

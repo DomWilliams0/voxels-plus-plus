@@ -1,15 +1,12 @@
 #ifndef VOXELS_MULTIDIM_H
 #define VOXELS_MULTIDIM_H
 
-#include <stddef.h>
 #include <array>
-#include <sstream>
 
 // coord type
 #include "glm/vec3.hpp"
 #include "glm/vec2.hpp"
 
-// TODO unsigned => accidental -1 will fuck it
 using GridIndex = unsigned int;
 
 template<GridIndex X, GridIndex Y, GridIndex Z>
@@ -35,7 +32,7 @@ public:
     using Coord = glm::vec<2, unsigned int>;
     static constexpr GridIndex FullSize = X * Y;
 
-    static size_t flatten(const Coord &coord) {
+    static GridIndex flatten(const Coord &coord) {
         return coord.x + coord.y * X;
     }
 
@@ -55,7 +52,7 @@ struct Grid : private GridImpl {
         fill(val);
     }
 
-    size_t flatten(const Coord &coord) const {
+    GridIndex flatten(const Coord &coord) const {
         return GridImpl::flatten(coord);
     }
 

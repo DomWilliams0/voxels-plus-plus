@@ -8,7 +8,7 @@
 #include "generation/generator.h"
 
 WorldLoader *WorldLoader::create(int seed, boost::thread **thread_out) {
-    WorldLoader *loader = new WorldLoader(seed);
+    auto *loader = new WorldLoader(seed);
     *thread_out = new boost::thread([loader]() {
         // wait a tad for game to properly start :^)
         boost::this_thread::sleep(boost::posix_time::milliseconds(100));
@@ -300,9 +300,10 @@ void WorldLoader::unload_chunk(Chunk *chunk, bool allow_cache) {
 
     {
         boost::lock_guard lock(renderable_lock_);
-        int n = renderable_.erase(chunk->id());
-        if (n > 0)
+        auto n = renderable_.erase(chunk->id());
+        if (n > 0) {
             DLOG_F(INFO, "removed renderable chunk %s", CHUNKSTR(chunk));
+        }
     }
 
     if (allow_cache) {

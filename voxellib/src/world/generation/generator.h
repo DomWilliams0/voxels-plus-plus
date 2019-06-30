@@ -25,7 +25,7 @@ public:
 private:
     int get_socket();
 
-    int sock_;
+    int sock_ = -1;
 
 };
 

@@ -12,12 +12,11 @@ ChunkNeighbour ChunkNeighbour::opposite() const {
             return kFront;
         default:
             assert(false);
+            return kBack; // unreachable
     }
 }
 
-ChunkTerrain::ChunkTerrain() : grid_(Block()){
-
-}
+ChunkTerrain::ChunkTerrain() : grid_(Block()) {}
 
 Block &ChunkTerrain::operator[](GridIndex flat_index) {
     return grid_[flat_index];
@@ -152,36 +151,36 @@ void ChunkTerrain::update_face_visibility() {
 
 void ChunkTerrain::populate_neighbour_opacity() {
     // back: +x
-    for (size_t y = 0; y < kChunkHeight; ++y) {
-        for (size_t z = 0; z < kChunkDepth; ++z) {
-            const size_t x = kChunkWidth - 1;
+    for (int y = 0; y < kChunkHeight; ++y) {
+        for (int z = 0; z < kChunkDepth; ++z) {
+            const int x = kChunkWidth - 1;
             Block &block = (*this)[{x, y, z}];
             neighbour_opacity_.back_[{y, z}] = block.type_.opaque();
         }
     }
 
     // front: -x
-    for (size_t y = 0; y < kChunkHeight; ++y) {
-        for (size_t z = 0; z < kChunkDepth; ++z) {
-            const size_t x = 0;
+    for (int y = 0; y < kChunkHeight; ++y) {
+        for (int z = 0; z < kChunkDepth; ++z) {
+            const int x = 0;
             Block &block = (*this)[{x, y, z}];
             neighbour_opacity_.front_[{y, z}] = block.type_.opaque();
         }
     }
 
     // right: +z
-    for (size_t x = 0; x < kChunkWidth; ++x) {
-        for (size_t y = 0; y < kChunkHeight; ++y) {
-            const size_t z = kChunkDepth - 1;
+    for (int x = 0; x < kChunkWidth; ++x) {
+        for (int y = 0; y < kChunkHeight; ++y) {
+            const int z = kChunkDepth - 1;
             Block &block = (*this)[{x, y, z}];
             neighbour_opacity_.right_[{x, y}] = block.type_.opaque();
         }
     }
 
     // left: -z
-    for (size_t x = 0; x < kChunkWidth; ++x) {
-        for (size_t y = 0; y < kChunkHeight; ++y) {
-            const size_t z = 0;
+    for (int x = 0; x < kChunkWidth; ++x) {
+        for (int y = 0; y < kChunkHeight; ++y) {
+            const int z = 0;
             Block &block = (*this)[{x, y, z}];
             neighbour_opacity_.left_[{x, y}] = block.type_.opaque();
         }

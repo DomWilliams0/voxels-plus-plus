@@ -12,15 +12,15 @@ const int kBlockScale = 2;
 // /2 again because radius, not diameter
 const float kBlockRadius = 1.f / kBlockScale / 2.f;
 
-const int kChunkWidthShift = 5; // 32
-const int kChunkHeightShift = 6; // 64 TODO change to 10 = 1024
-const int kChunkDepthShift = 5; // 32
+const unsigned int kChunkWidthShift = 5; // 32
+const unsigned int kChunkHeightShift = 6; // 64 TODO change to 10 = 1024
+const unsigned int kChunkDepthShift = 5; // 32
 
-const int kChunkWidth = 1 << kChunkWidthShift;
-const int kChunkHeight = 1 << kChunkHeightShift;
-const int kChunkDepth = 1 << kChunkDepthShift;
+const int kChunkWidth = 1U << kChunkWidthShift;
+const int kChunkHeight = 1U << kChunkHeightShift;
+const int kChunkDepth = 1U << kChunkDepthShift;
 
-const int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
+const unsigned int kBlocksPerChunk = kChunkWidth * kChunkHeight * kChunkDepth;
 
 
 // as defined in kBlockVertices, 3 for pos

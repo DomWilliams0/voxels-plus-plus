@@ -20,7 +20,7 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
     ChunkTerrain::BlockCoord block_pos;
     size_t out_idx = 0;
 
-    for (int block_idx = 0; block_idx < kBlocksPerChunk; ++block_idx) {
+    for (unsigned int block_idx = 0; block_idx < kBlocksPerChunk; ++block_idx) {
         const Block &block = terrain_[block_idx];
         // cull if totally occluded
         if (block.face_visibility_.invisible())
@@ -72,8 +72,8 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
 
 ChunkId_t Chunk::owning_chunk(const glm::ivec3 &block_pos) {
     return ChunkId(
-            block_pos.x >> kChunkWidthShift,
-            block_pos.z >> kChunkDepthShift
+            block_pos.x / kChunkWidth,
+            block_pos.z / kChunkDepth
     );
 }
 
@@ -159,7 +159,7 @@ bool ChunkMesh::prepare_render() {
     return true;
 }
 
-ChunkMeshRaw *ChunkMesh::on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh) {
+ChunkMeshRaw *ChunkMesh::on_mesh_update(unsigned int new_size, ChunkMeshRaw *new_mesh) {
     mesh_size_ = new_size;
     dirty_ = true;
     if (new_mesh != nullptr) {

@@ -12,8 +12,8 @@ int __attribute__((constructor)) init() {
     return 0;
 }
 
-double perlin_scaled(int x, int z, int seed, double scale) {
-    double n = noise_.GetPerlin(x / scale, seed, z / scale);
+double perlin_scaled(int x, int z, FN_DECIMAL seed, double scale) {
+    FN_DECIMAL n = noise_.GetPerlin(x / scale, seed, z / scale);
     double min = -0.8;
     double max = +0.8;
 
@@ -39,7 +39,9 @@ int generate(int chunk_x, int chunk_z, int seed, ChunkTerrain &terrain_out) {
             else
                 bt = noise_block < 0.5 ? BlockType::kStone : BlockType::kGrass;
 
-            int top = (int) boost::algorithm::clamp(noise_height * kChunkHeight, 1, kChunkHeight - 1);
+            auto top = static_cast<unsigned int>(
+                    boost::algorithm::clamp(noise_height * kChunkHeight, 1, kChunkHeight - 1)
+            );
             for (unsigned int y = top; y > 0; y--)
                 terrain_out[{bx, y, bz}].type_ = bt;
         }

@@ -7,7 +7,7 @@ constexpr unsigned long rgba(unsigned int r, unsigned int g, unsigned int b, uns
             ((r & 0xFFu) << 0u));
 }
 
-long BlockType::colour() const {
+unsigned int BlockType::colour() const {
     switch (value_) {
         case kAir:
             return rgba(255, 255, 255);

@@ -25,7 +25,7 @@ public:
 
     void tweak_loaded_chunk_radius(int delta);
 
-    inline int loaded_chunk_radius() const { return loaded_chunk_radius_; }
+    inline unsigned int loaded_chunk_radius() const { return loaded_chunk_radius_; }
 
     inline void get_renderable_chunks(std::vector<ChunkMesh *> &out) { loader_->get_renderable_chunks(out); }
 
@@ -40,7 +40,7 @@ public:
 
 private:
     WorldCentre centre_ {};
-    int loaded_chunk_radius_;
+    unsigned int loaded_chunk_radius_;
 
     struct {
         glm::vec3 position_ {};

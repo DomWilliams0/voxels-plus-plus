@@ -17,7 +17,7 @@ public:
 
     Face() = default;
 
-    constexpr Face(Value val) : value_(val) {}
+    constexpr explicit Face(Value val) : value_(val) {}
 
     constexpr Face(int val) : value_(static_cast<Value>(val)) {}
 
@@ -62,7 +62,7 @@ public:
 
 // ambient occlusion
 // 2 bits per 4 unique vertices per 6 faces
-const int kAoBitCount = 2 * 4 * 6;
+const unsigned int kAoBitCount = 2 * 4 * 6;
 
 class AmbientOcclusion {
 public:
@@ -104,7 +104,7 @@ private:
 
     // block level
     const static unsigned long kNone = 0;
-    const static unsigned long kAll = ((1L << kAoBitCount) - 1);
+    const static unsigned long kAll = ((1UL << kAoBitCount) - 1);
 
     // vertex level
     const static int kVertexNone = 3; // both bits set

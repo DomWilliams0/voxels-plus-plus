@@ -112,13 +112,13 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
     // clear gl garbage
     world_->get_gl_goshdarn_garbage(gl_garbage_);
     for (auto garbage : gl_garbage_) {
-        const GLuint *buf = reinterpret_cast<const GLuint *>(&garbage.buf);
+        auto *buf = reinterpret_cast<const GLuint *>(&garbage.buf);
         if (garbage.is_vertex_array)
             glDeleteVertexArrays(1, buf);
         else
             glDeleteBuffers(1, buf);
     }
-    if (gl_garbage_.size() > 0) {
+    if (!gl_garbage_.empty()) {
         DLOG_F(INFO, "released %zu gl buffers", gl_garbage_.size());
         gl_garbage_.clear();
     }

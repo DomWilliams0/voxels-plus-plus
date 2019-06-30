@@ -116,9 +116,9 @@ void AmbientOcclusion::Builder::get_face_offsets(const Face &face, AmbientOcclus
     b_out = def[(2 * vertex) + 1];
 }
 
-void AmbientOcclusion::Builder::set_vertex(const Face &face, AmbientOcclusion::Builder::Vertex vertex, bool s1, bool s2,
-                                           bool corner) {
-    int val = (s1 && s2 ? kVertexFull : (kVertexNone - (s1 + s2 + corner)));
+void AmbientOcclusion::Builder::set_vertex(const Face &face, AmbientOcclusion::Builder::Vertex vertex,
+                                           bool s1, bool s2, bool corner) {
+    const unsigned int val = (s1 && s2 ? kVertexFull : (kVertexNone - (s1 + s2 + corner)));
     auto &value = values_[*face];
     value.dirty_ = true;
     value.vertices_[vertex] = val;
@@ -132,10 +132,10 @@ void AmbientOcclusion::Builder::build(AmbientOcclusion &out) const {
 
         const unsigned int *vertices = value.vertices_;
         unsigned long byte =
-                vertices[0] << 0 | // v05
-                vertices[1] << 2 | // v1
-                vertices[2] << 4 | // v23
-                vertices[3] << 6;  // v4
+                vertices[0] << 0UL | // v05
+                vertices[1] << 2UL | // v1
+                vertices[2] << 4UL | // v23
+                vertices[3] << 6UL;  // v4
 
         unsigned long face_shift = *face * 8;
 
@@ -159,7 +159,7 @@ void AmbientOcclusion::Builder::set_brightest() {
 float AmbientOcclusion::get_vertex(Face face, int vertex) const {
     assert(vertex < 6);
 
-    int real_idx;
+    unsigned int real_idx;
     switch (vertex) {
         case 0:
         case 5:

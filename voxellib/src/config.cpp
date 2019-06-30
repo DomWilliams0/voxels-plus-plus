@@ -54,7 +54,7 @@ namespace config {
     }
 
     static int thread_count(const boost::property_tree::ptree &tree, const char *key) {
-        unsigned int count = get<int>(tree, key);
+        auto count = get<int>(tree, key);
         if (count <= 0)
             count = boost::thread::hardware_concurrency() * 2; // TODO use threadpool concurrency
 
@@ -65,7 +65,7 @@ namespace config {
     }
 
     static GeneratorType generator(const boost::property_tree::ptree &tree, std::string &out) {
-        std::string str = get<std::string>(tree, "terrain.generator");
+        auto str = get<std::string>(tree, "terrain.generator");
         GeneratorType type;
 
         if (str == "flat")
@@ -99,7 +99,7 @@ namespace config {
         LOG_F(INFO, "config: terrain.generator == %s", str.c_str());
 
         // chunk radius
-        kInitialLoadedChunkRadius = get<int>(tree, "terrain.load_radius");
+        kInitialLoadedChunkRadius = get<unsigned int>(tree, "terrain.load_radius");
         if (kInitialLoadedChunkRadius < 1) kInitialLoadedChunkRadius = 1;
         LOG_F(INFO, "config: terrain.load_radius == %d", kInitialLoadedChunkRadius);
     }

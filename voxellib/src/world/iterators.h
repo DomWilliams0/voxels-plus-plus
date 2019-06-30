@@ -31,6 +31,9 @@
                     ++layer; \
                 } \
                 break; \
+            default: \
+                assert(false); \
+                break; \
         } \
     } \
 } while (0);

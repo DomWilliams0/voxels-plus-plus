@@ -16,14 +16,14 @@
 typedef uint64_t ChunkId_t;
 
 inline ChunkId_t ChunkId(int32_t x, int32_t z) {
-    return ((uint64_t) x << 32) | (uint32_t) z;
+    return ((uint64_t) x << 32U) | (uint32_t) z;
 }
 
 const ChunkId_t kChunkIdInit = UINT64_MAX;
 
 inline void ChunkId_deconstruct(ChunkId_t c_id, int32_t &x, int32_t &z) {
-    x = c_id >> 32;
-    z = c_id & ((1L << 32) - 1);
+    x = c_id >> 32U;
+    z = c_id & ((1UL << 32UL) - 1);
 }
 
 inline std::string ChunkId_str(ChunkId_t id) {
@@ -35,9 +35,9 @@ inline std::string ChunkId_str(ChunkId_t id) {
 }
 
 // helper
-#define CHUNKSTR(c) (ChunkId_str(c->id()).c_str())
+#define CHUNKSTR(c) (ChunkId_str((c)->id()).c_str())
 
-inline unsigned int loaded_radius_chunk_count(int radius) {
+inline unsigned int loaded_radius_chunk_count(unsigned int radius) {
     return (2 * radius + 1) * (2 * radius + 1);
 }
 
@@ -46,7 +46,7 @@ typedef std::array<int32_t, kChunkMeshSize> ChunkMeshRaw;
 class ChunkMesh {
 
 public:
-    ChunkMesh(ChunkId_t chunk_id);
+    explicit ChunkMesh(ChunkId_t chunk_id);
 
     inline int mesh_size() const { return mesh_size_; }
 
@@ -56,14 +56,12 @@ public:
 
     inline unsigned int vbo() const { return vbo_; }
 
-    inline ChunkMeshRaw &mesh() { return *mesh_; }
-
     // must be run in main thread
     // returns if successful
     bool prepare_render();
 
     // new_mesh is optional, if non-null is swapped in and old mesh is returned
-    ChunkMeshRaw *on_mesh_update(size_t new_size, ChunkMeshRaw *new_mesh);
+    ChunkMeshRaw *on_mesh_update(unsigned int new_size, ChunkMeshRaw *new_mesh);
 
     // takes ownership of mesh, sets field to null
     ChunkMeshRaw *steal_mesh();
@@ -88,7 +86,7 @@ typedef std::array<ChunkId_t, ChunkNeighbour::kCount> ChunkNeighbours;
 
 class Chunk {
 public:
-    Chunk(ChunkId_t id);
+    explicit Chunk(ChunkId_t id);
 
     inline ChunkId_t id() const { return id_; }
 

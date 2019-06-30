@@ -101,9 +101,9 @@ private:
 
     void really_unload_all_chunks();
 
-    ChunkMeshRaw *alloc_mesh(unsigned long length);
+    static ChunkMeshRaw *alloc_mesh(unsigned long length);
 
-    void dealloc_mesh(ChunkMeshRaw *mesh);
+    static void dealloc_mesh(ChunkMeshRaw *mesh);
 
 };
 

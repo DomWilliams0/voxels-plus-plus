@@ -64,22 +64,22 @@ static void format(const char *prefix, Format format, void *vec, std::string &ou
 
     switch (format) {
         case kFormatVec3: {
-            glm::vec3 *v = static_cast<glm::vec3 *>(vec);
+            auto *v = static_cast<glm::vec3 *>(vec);
             snprintf(buf, 64, "%6.02f, %6.02f, %6.02f", v->x, v->y, v->z);
             break;
         }
         case kFormatVec2: {
-            glm::vec2 *v = static_cast<glm::vec2 *>(vec);
+            auto *v = static_cast<glm::vec2 *>(vec);
             snprintf(buf, 64, "%6.02f, %6.02f", v->x, v->y);
             break;
         }
         case kFormatiVec3: {
-            glm::ivec3 *v = static_cast<glm::ivec3 *>(vec);
+            auto *v = static_cast<glm::ivec3 *>(vec);
             snprintf(buf, 64, "%6d, %6d, %6d", v->x, v->y, v->z);
             break;
         }
         case kFormatiVec2: {
-            glm::ivec2 *v = static_cast<glm::ivec2 *>(vec);
+            auto *v = static_cast<glm::ivec2 *>(vec);
             snprintf(buf, 64, "%6d, %6d", v->x, v->y);
             break;
         }
@@ -120,8 +120,8 @@ void Ui::make_ui(const Camera &camera, const World &world) {
 
     // loaded chunks
     {
-        int chunk_radius = world.loaded_chunk_radius();
-        int chunk_count = loaded_radius_chunk_count(chunk_radius);
+        unsigned int chunk_radius = world.loaded_chunk_radius();
+        unsigned int chunk_count = loaded_radius_chunk_count(chunk_radius);
 
         char *str = chunk_rad_str_.data();
         snprintf(str, 64, "Loaded chunks: %d (radius %d)", chunk_count, chunk_radius);

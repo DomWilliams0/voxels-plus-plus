@@ -42,10 +42,10 @@ int DummyGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain
 static size_t recv_all(int s, void *buf, size_t len) {
     size_t cur = 0;
     size_t total = 0;
-    const int CHUNK_SIZE = 1 << 16u;
+    const int CHUNK_SIZE = 1U << 16U;
 
     while (total < len) {
-        int n = recv(s, (char *) buf + cur, CHUNK_SIZE, 0);
+        auto n = recv(s, (char *) buf + cur, CHUNK_SIZE, 0);
         if (n < 0)
             break;
 
@@ -90,7 +90,7 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
         return 5; // TODO error
     }
 
-    for (int i = 0; i < kBlocksPerChunk; i++) {
+    for (unsigned int i = 0; i < kBlocksPerChunk; i++) {
         Block &b = terrain_out[i];
         b.type_ = static_cast<BlockType>(buf[i]);
     }

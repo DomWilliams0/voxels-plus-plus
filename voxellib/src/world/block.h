@@ -27,7 +27,7 @@ public:
 
     constexpr Value operator*() const { return value_; }
 
-    long colour() const;
+    unsigned int colour() const;
 
     bool opaque() const;
 

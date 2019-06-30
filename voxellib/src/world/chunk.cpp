@@ -32,22 +32,20 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
 
         terrain_.expand(block_idx, block_pos);
 
-        for (int face_idx = 0; face_idx < kFaceCount; ++face_idx) {
-            auto face = kFaces[face_idx];
-
+        for (Face face : Face::kFaces) {
             // cull face if not visible
             if (!block.face_visibility_.visible(face))
                 continue;
 
             int stride = 6 * 3; // 6 vertices * 3 floats per face (TODO add normals)
-            const float *verts = kBlockVertices + (stride * (int) face);
+            const float *verts = kBlockVertices + (stride * *face);
 
             union {
                 float f;
                 int i;
-            } f_or_i;
+            } f_or_i{0};
 
-            for (int v = 0; v < kFaceCount; ++v) {
+            for (int v = 0; v < Face::kCount; ++v) {
                 // vertex pos in chunk space
                 int v_idx = v * 3;
                 for (int j = 0; j < 3; ++j) {
@@ -55,7 +53,7 @@ unsigned long Chunk::populate_mesh(ChunkMeshRaw &mesh) {
                     mesh[out_idx++] = f_or_i.i;
                 }
                 // colour
-                int colour = kBlockTypeColours[static_cast<int>(block.type_)];
+                unsigned int colour = block.type_.colour();
                 mesh[out_idx++] = colour;
 
                 // ao

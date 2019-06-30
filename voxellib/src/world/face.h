@@ -4,42 +4,56 @@
 #include <array>
 #include <bitset>
 
-// TODo store bitwise value outside
-enum Face {
-    kFront = 0,
-    kLeft,
-    kRight,
-    kTop,
-    kBottom,
-    kBack,
-};
-
-const int kFaceCount = 6;
-
-const enum Face kFaces[kFaceCount] = {
-        kFront,
+class Face {
+public:
+    enum Value : uint8_t {
+        kFront = 0,
         kLeft,
         kRight,
         kTop,
         kBottom,
-        kBack
+        kBack,
+    };
+
+    Face() = default;
+
+    constexpr Face(Value val) : value_(val) {}
+
+    constexpr Face(int val) : value_(static_cast<Value>(val)) {}
+
+    constexpr bool operator==(Face o) const { return value_ == o.value_; }
+
+    constexpr bool operator!=(Face o) const { return value_ != o.value_; }
+
+    constexpr Value operator*() const { return value_; }
+
+    constexpr static int kCount = 6;
+
+    constexpr static Value kFaces[kCount] = {kFront, kLeft, kRight, kTop, kBottom, kBack};
+
+    void offset(int *out) const;
+
+    void offset(const int *in, int *out) const;
+
+    void offset_with_copy(const int *in, int *out) const;
+
+
+private:
+    Value value_;
+
 };
 
-void face_offset(Face face, int *out);
-
-void face_offset_with_copy(Face face, const int *in, int *out);
-
-void face_offset(Face face, const int *in, int *out);
-
-Face face_opposite(Face face);
-
-class FaceVisibility : std::bitset<kFaceCount> {
+class FaceVisibility : std::bitset<Face::kCount> {
 public:
-    bool visible(Face face) const;
+    FaceVisibility();
+
+    bool visible(const Face &face) const;
 
     void set_fully_visible();
 
-    void set_face_visible(Face face, bool visible);
+    void set_invisible();
+
+    void set_face_visible(const Face &face, bool visible);
 
     // no faces visible
     bool invisible() const;
@@ -68,10 +82,9 @@ public:
         const static int kVertexCount = 4;
         constexpr static Vertex kVertices[] = {kV05, kV1, kV23, kV4};
 
-        static void get_face_offsets(Face face, Vertex vertex, Face &a_out, Face &b_out);
+        static void get_face_offsets(const Face &face, Vertex vertex, Face &a_out, Face &b_out);
 
-        void set_vertex(Face face, AmbientOcclusion::Builder::Vertex vertex, bool s1, bool s2,
-                        bool corner);
+        void set_vertex(const Face &face, AmbientOcclusion::Builder::Vertex vertex, bool s1, bool s2, bool corner);
 
         // write out bits to AO
         void build(AmbientOcclusion &out) const;
@@ -80,9 +93,9 @@ public:
 
     private:
         struct {
-            bool dirty_ = 0;
-            int vertices_[kVertexCount] = {0};
-        } values_[kFaceCount];
+            bool dirty_ = false;
+            unsigned int vertices_[kVertexCount] = {0};
+        } values_[Face::kCount];
 
     };
 

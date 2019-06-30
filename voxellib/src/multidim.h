@@ -84,7 +84,7 @@ struct Grid : private GridImpl {
     }
 
 private:
-    std::array<T, FullSize> array_ {};
+    std::array<T, FullSize> array_;
 };
 
 

@@ -5,33 +5,42 @@
 #include "face.h"
 #include "constants.h"
 
-// TODO upgrade enum
-enum class BlockType : int8_t {
-    kAir = 0,
-    kGrass,
-    kStone,
-    kDarkStone,
-    kMarker,
-};
+class BlockType {
+public:
+    enum Value : uint8_t {
+        kAir = 0,
+        kGrass,
+        kStone,
+        kDarkStone,
+        kMarker,
+    };
 
-const static long kBlockTypeColours[] = {
-        0xfffffff,  // kAir
-        0xff007815, // kGrass
-        0xff828282, // kStone
-        0xff444444, // kDarkStone
-        0xffff0d00, // kMarker
-};
+    BlockType() = default;
 
-inline bool BlockType_opaque(BlockType bt) {
-    return bt != BlockType::kAir;
-}
+    constexpr BlockType(Value val) : value_(val) {}
+
+    constexpr explicit BlockType(int val) : value_(static_cast<Value>(val)) {}
+
+    constexpr bool operator==(BlockType o) const { return value_ == o.value_; }
+
+    constexpr bool operator!=(BlockType o) const { return value_ != o.value_; }
+
+    constexpr Value operator*() const { return value_; }
+
+    long colour() const;
+
+    bool opaque() const;
+
+private:
+    Value value_;
+};
 
 struct Block {
     BlockType type_;
-    FaceVisibility face_visibility_ {};
-    AmbientOcclusion ao_ {};
+    FaceVisibility face_visibility_;
+    AmbientOcclusion ao_;
 
-    Block(BlockType type = BlockType::kAir) : type_(type) {}
+    explicit Block(BlockType type = BlockType::kAir) : type_(type) {}
 
     inline static glm::ivec3 from_world_pos(const glm::vec3 &world_pos) {
         return {

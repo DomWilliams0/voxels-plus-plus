@@ -56,7 +56,7 @@ void ChunkTerrain::expand(unsigned int index, BlockCoord &out) {
 bool
 ChunkTerrain::is_opaque_internal_only(const BlockCoord &src, Face face, bool bounds_check, bool *was_out_of_bounds) {
     BlockCoord offset(src);
-    face_offset(face, offset.data());
+    face.offset(offset.data());
 
     // check for out of bounds
     if (bounds_check && is_out_of_bounds_in_another_chunk(offset)) {
@@ -67,7 +67,7 @@ ChunkTerrain::is_opaque_internal_only(const BlockCoord &src, Face face, bool bou
 
     // safe to cast from signed to unsigned and deref now
     const Block &offset_block = (*this)[offset];
-    return BlockType_opaque(offset_block.type_);
+    return offset_block.type_.opaque();
 }
 
 
@@ -83,10 +83,10 @@ void ChunkTerrain::calculate_ao(AmbientOcclusion::Builder &ao, ChunkTerrain::Blo
     Face fa, fb;
 
     for (auto vertex : AmbientOcclusion::Builder::kVertices) {
-        ao.get_face_offsets(face, vertex, fa, fb);
+        AmbientOcclusion::Builder::get_face_offsets(face, vertex, fa, fb);
 
         BlockCoord fa_pos(offset_pos);
-        face_offset(fa, fa_pos.data());
+        fa.offset(fa_pos.data());
 
         bool abort = false;
         bool s1 = is_opaque_internal_only(offset_pos, fa, true, &abort);
@@ -95,30 +95,30 @@ void ChunkTerrain::calculate_ao(AmbientOcclusion::Builder &ao, ChunkTerrain::Blo
         bool s2 = is_opaque_internal_only(offset_pos, fb, true, &abort);
         if (abort) continue;
 
-        bool corner = is_opaque_internal_only(fa_pos, fb, false, NULL); // dont need to check corner for out of bounds
+        bool corner = is_opaque_internal_only(fa_pos, fb, false, nullptr); // dont need to check corner for out of bounds
         ao.set_vertex(face, vertex, s1, s2, corner);
     }
 }
 
 void ChunkTerrain::update_face_visibility() {
     BlockCoord pos;
-    for (int i = 0; i < kBlocksPerChunk; ++i) {
+    for (unsigned int i = 0; i < kBlocksPerChunk; ++i) {
         Block &b = (*this)[i];
 
         FaceVisibility &visibility = b.face_visibility_;
         AmbientOcclusion::Builder ao;
 
-        if (!BlockType_opaque(b.type_)) {
+        if (!b.type_.opaque()) {
             // fully visible and not occluded because transparent
-            visibility.set_fully_visible();
+            visibility.set_invisible();
             ao.set_brightest();
         } else {
             expand(i, pos);
 
             // check each face individually
-            for (Face face : kFaces) {
+            for (const Face &face : Face::kFaces) {
                 BlockCoord offset_pos(pos);
-                face_offset(face, offset_pos.data());
+                face.offset(offset_pos.data());
 
                 // facing top/bottom of world, so this face is visible
                 if (is_out_of_bounds_invalid(offset_pos)) {
@@ -135,7 +135,7 @@ void ChunkTerrain::update_face_visibility() {
 
                 // inside this chunk, safe to get the block type
                 const Block &offset_block = (*this)[offset_pos];
-                bool offset_opaque = BlockType_opaque(offset_block.type_);
+                bool offset_opaque = offset_block.type_.opaque();
                 visibility.set_face_visible(face, !offset_opaque);
 
                 // update ao for visible faces only
@@ -156,7 +156,7 @@ void ChunkTerrain::populate_neighbour_opacity() {
         for (size_t z = 0; z < kChunkDepth; ++z) {
             const size_t x = kChunkWidth - 1;
             Block &block = (*this)[{x, y, z}];
-            neighbour_opacity_.back_[{y, z}] = BlockType_opaque(block.type_);
+            neighbour_opacity_.back_[{y, z}] = block.type_.opaque();
         }
     }
 
@@ -165,7 +165,7 @@ void ChunkTerrain::populate_neighbour_opacity() {
         for (size_t z = 0; z < kChunkDepth; ++z) {
             const size_t x = 0;
             Block &block = (*this)[{x, y, z}];
-            neighbour_opacity_.front_[{y, z}] = BlockType_opaque(block.type_);
+            neighbour_opacity_.front_[{y, z}] = block.type_.opaque();
         }
     }
 
@@ -174,7 +174,7 @@ void ChunkTerrain::populate_neighbour_opacity() {
         for (size_t y = 0; y < kChunkHeight; ++y) {
             const size_t z = kChunkDepth - 1;
             Block &block = (*this)[{x, y, z}];
-            neighbour_opacity_.right_[{x, y}] = BlockType_opaque(block.type_);
+            neighbour_opacity_.right_[{x, y}] = block.type_.opaque();
         }
     }
 
@@ -183,7 +183,7 @@ void ChunkTerrain::populate_neighbour_opacity() {
         for (size_t y = 0; y < kChunkHeight; ++y) {
             const size_t z = 0;
             Block &block = (*this)[{x, y, z}];
-            neighbour_opacity_.left_[{x, y}] = BlockType_opaque(block.type_);
+            neighbour_opacity_.left_[{x, y}] = block.type_.opaque();
         }
     }
 }
@@ -212,7 +212,7 @@ bool ChunkTerrain::is_opaque_perhaps_in_neighbour(const BlockCoord &pos,
 
     // internal
     const Block &block = (*this)[pos];
-    return BlockType_opaque(block.type_);
+    return block.type_.opaque();
 }
 
 template<size_t dim1, size_t dim2>
@@ -229,23 +229,23 @@ void ChunkTerrain::calculate_edge_ao(Block &block, const BlockCoord &pos,
         (p1 == dim1 - 1 && p2 == 0) || (p1 == dim1 - 1 && p2 == dim2 - 1))
         return;
 
-    for (Face face : kFaces) {
+    for (Face face : Face::kFaces) {
         // face is not visible, skip
         if (!block.face_visibility_.visible(face))
             continue;
 
         BlockCoord offset_pos; // TODO helper to go direct in one line
-        face_offset_with_copy(face, pos.data(), offset_pos.data());
+        face.offset_with_copy(pos.data(), offset_pos.data());
 
         // go around face
         for (auto vertex : AmbientOcclusion::Builder::kVertices) {
-            ao.get_face_offsets(face, vertex, fa, fb);
+            AmbientOcclusion::Builder::get_face_offsets(face, vertex, fa, fb);
 
             // calculate blocks we need
             BlockCoord fa_pos, fb_pos, corner_pos;
-            face_offset_with_copy(fa, offset_pos.data(), fa_pos.data());
-            face_offset_with_copy(fb, offset_pos.data(), fb_pos.data());
-            face_offset_with_copy(fb, fa_pos.data(), corner_pos.data());
+            fa.offset_with_copy(offset_pos.data(), fa_pos.data());
+            fb.offset_with_copy(offset_pos.data(), fb_pos.data());
+            fb.offset_with_copy(fa_pos.data(), corner_pos.data());
 
             bool s1 = is_opaque_perhaps_in_neighbour(fa_pos, neighbour_opacity, idx1, idx2);
             bool s2 = is_opaque_perhaps_in_neighbour(fb_pos, neighbour_opacity, idx1, idx2);
@@ -273,6 +273,7 @@ void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour sid
 
                     // face visibility
                     Block &block = (*this)[{x, y, z}];
+                    if (!block.type_.opaque()) continue;
                     block.face_visibility_.set_face_visible(face, !n_opaque);
 
                     // ao
@@ -292,6 +293,7 @@ void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour sid
 
                     // face visibility
                     Block &block = (*this)[{x, y, z}];
+                    if (!block.type_.opaque()) continue;
                     block.face_visibility_.set_face_visible(face, !n_opaque);
 
                     // ao
@@ -311,6 +313,7 @@ void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour sid
 
                     // face visibility
                     Block &block = (*this)[{x, y, z}];
+                    if (!block.type_.opaque()) continue;
                     block.face_visibility_.set_face_visible(face, !n_opaque);
 
                     // ao
@@ -330,6 +333,7 @@ void ChunkTerrain::merge_faces(const ChunkTerrain &neighbour, ChunkNeighbour sid
 
                     // face visibility
                     Block &block = (*this)[{x, y, z}];
+                    if (!block.type_.opaque()) continue;
                     block.face_visibility_.set_face_visible(face, !n_opaque);
 
                     // ao

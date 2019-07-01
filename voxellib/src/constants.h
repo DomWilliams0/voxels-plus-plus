@@ -13,7 +13,7 @@ const int kBlockScale = 2;
 const float kBlockRadius = 1.f / kBlockScale / 2.f;
 
 const unsigned int kChunkWidthShift = 5; // 32
-const unsigned int kChunkHeightShift = 6; // 64 TODO change to 10 = 1024
+const unsigned int kChunkHeightShift = 7; // 128 TODO change to 10 = 1024
 const unsigned int kChunkDepthShift = 5; // 32
 
 const int kChunkWidth = 1U << kChunkWidthShift;

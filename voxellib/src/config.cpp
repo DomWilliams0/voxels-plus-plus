@@ -1,8 +1,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
-#include <boost/thread/thread_pool.hpp>
 #include <boost/lexical_cast.hpp>
 #include "config.h"
+#include "threadpool.h"
 #include "world/generation/generator.h"
 #include "loguru/loguru.hpp"
 
@@ -54,10 +54,22 @@ namespace config {
     }
 
     static int thread_count(const boost::property_tree::ptree &tree, const char *key) {
-        auto count = get<int>(tree, key);
-        if (count <= 0)
-            count = boost::thread::hardware_concurrency() * 2; // TODO use threadpool concurrency
+        auto val = get<float>(tree, key);
+        int count;
 
+        // use max concurrency
+        if (val <= 0)
+            count = ThreadPool::hardware_concurrency();
+        else {
+            if (ceilf(val) == floorf(val))
+                count = static_cast<int>(val); // integer
+            else {
+                val = fminf(val, 1.f);
+                count = static_cast<int>(floorf(val * ThreadPool::hardware_concurrency()));
+            }
+        }
+
+        // default
         if (count <= 0)
             count = 2;
 

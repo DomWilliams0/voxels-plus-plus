@@ -58,7 +58,8 @@ ChunkTerrain::is_opaque_internal_only(const BlockCoord &src, Face face, bool bou
     face.offset(offset.data());
 
     // check for out of bounds
-    if (bounds_check && is_out_of_bounds_in_another_chunk(offset)) {
+    if (is_out_of_bounds_invalid(offset) ||
+        (bounds_check && is_out_of_bounds_in_another_chunk(offset))) {
         // not visible for now, will be updated later
         *was_out_of_bounds = true;
         return false;

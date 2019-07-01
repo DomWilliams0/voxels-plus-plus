@@ -8,6 +8,8 @@
 #include "chunk.h"
 #include "centre.h"
 #include "loader.h"
+#include "frustum.h"
+
 class Camera;
 
 class World {
@@ -37,6 +39,11 @@ public:
 
     // gracefully stop all threads
     void cleanup();
+
+    // populated for ui to read from
+    struct {
+        unsigned int chunk_cull_count_ = 0;
+    } stats_;
 
 private:
     WorldCentre centre_ {};

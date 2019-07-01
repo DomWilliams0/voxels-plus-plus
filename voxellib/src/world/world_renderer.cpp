@@ -6,6 +6,7 @@
 #include "glm/gtx/string_cast.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
+#include "frustum.h"
 
 // globals to be kept updated
 int window_width = 0;
@@ -50,6 +51,17 @@ int WorldRenderer::init(World *world) {
 WorldRenderer::WorldRenderer() : world_(nullptr) {} // uninitialised
 
 
+// chunk_pos is chunk's 0,0 in world space
+static bool is_chunk_visible(const glm::ivec3 &chunk_pos, const Frustum &frustum) {
+    glm::ivec3 chunk_max(
+            chunk_pos.x + (kChunkWidth - 1) * kBlockRadius * 2,
+            chunk_pos.y + (kChunkHeight - 1) * kBlockRadius * 2,
+            chunk_pos.z + (kChunkDepth - 1) * kBlockRadius * 2
+    );
+
+    return frustum.is_rectangle_visible(chunk_pos, chunk_max);
+}
+
 void WorldRenderer::render_world(const glm::mat4 &view) {
     // clear screen
     glClearColor(1, 1, 1, 1);
@@ -59,9 +71,12 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
     glUseProgram(prog_);
 
     // update projection
+    const float near = 0.1f;
+    const float far = 1000.0f;
+    glm::mat4 proj;
     {
         float aspect = ((float) window_width) / window_height;
-        auto proj = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 1000.0f);
+        proj = glm::perspective(glm::radians(45.0f), aspect, near, far);
 
         int loc = glGetUniformLocation(prog_, "projection");
         glUniformMatrix4fv(loc, 1, GL_FALSE, glm::value_ptr(proj));
@@ -71,8 +86,19 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
     renderables_.clear();
     world_->get_renderable_chunks(renderables_);
 
+    // chunk culling
+    Frustum frustum(view, proj);
+    int cull_count = 0;
+
     glm::ivec3 world_transform;
     for (ChunkMesh *mesh : renderables_) {
+        mesh->world_offset(world_transform);
+
+        if (!is_chunk_visible(world_transform, frustum)) {
+            cull_count += 1;
+            continue;
+        }
+
         if (!mesh->prepare_render())
             continue;
 
@@ -100,12 +126,13 @@ void WorldRenderer::render_world(const glm::mat4 &view) {
         }
 
         // update view with chunk world offset
-        mesh->world_offset(world_transform);
         update_view(view, world_transform);
 
         // TODO instancing?
         glDrawArrays(GL_TRIANGLES, 0, mesh->mesh_size());
     }
+
+    world_->stats_.chunk_cull_count_ = cull_count;
 
     world_->finished_rendering();
 

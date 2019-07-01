@@ -93,7 +93,7 @@ static void format(const char *prefix, Format format, void *vec, std::string &ou
 void Ui::make_ui(const Camera &camera, const World &world) {
     int pos = 10;
     int flags = ImGuiWindowFlags_NoCollapse |
-                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_AlwaysAutoResize |
                 ImGuiWindowFlags_NoFocusOnAppearing;
 
     ImGui::SetNextWindowPos(
@@ -122,9 +122,12 @@ void Ui::make_ui(const Camera &camera, const World &world) {
     {
         unsigned int chunk_radius = world.loaded_chunk_radius();
         unsigned int chunk_count = loaded_radius_chunk_count(chunk_radius);
+        unsigned int cull_count = world.stats_.chunk_cull_count_;
+        unsigned int render_count = chunk_count - cull_count;
 
         char *str = chunk_rad_str_.data();
-        snprintf(str, 64, "Loaded chunks: %d (radius %d)", chunk_count, chunk_radius);
+        snprintf(str, 64, "Load radius: %2d, rendering %3d/%3d (%0.f%%)", chunk_radius,
+                 render_count, chunk_count, ((float) (render_count) / chunk_count * 100));
         ImGui::TextUnformatted(str);
     }
 

@@ -90,12 +90,11 @@ void ChunkTerrain::calculate_ao(AmbientOcclusion::Builder &ao, ChunkTerrain::Blo
 
         bool abort = false;
         bool s1 = is_opaque_internal_only(offset_pos, fa, true, &abort);
-        if (abort) continue;
-
         bool s2 = is_opaque_internal_only(offset_pos, fb, true, &abort);
-        if (abort) continue;
 
-        bool corner = is_opaque_internal_only(fa_pos, fb, false, nullptr); // dont need to check corner for out of bounds
+        bool corner = abort
+                      ? false // if s1 or s2 was out of bounds, so is corner
+                      : is_opaque_internal_only(fa_pos, fb, false, nullptr);
         ao.set_vertex(face, vertex, s1, s2, corner);
     }
 }

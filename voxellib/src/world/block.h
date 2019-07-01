@@ -12,6 +12,8 @@ public:
         kGrass,
         kStone,
         kDarkStone,
+        kSnow,
+        kSand,
         kMarker,
     };
 

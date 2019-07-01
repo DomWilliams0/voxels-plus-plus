@@ -19,6 +19,10 @@ unsigned int BlockType::colour() const {
             return rgba(90, 83, 83);
         case kMarker:
             return rgba(230, 72, 46);
+        case kSnow:
+            return rgba(216, 240, 252);
+        case kSand:
+            return rgba(253, 224, 108);
     }
 
     assert(false);

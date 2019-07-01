@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import collections
-import random
 import struct
 
-import noise
 import numpy
+
+import biome
 
 VERSION = 1
 
@@ -22,14 +22,12 @@ def gen(req):
 
     for x in range(req.cw):
         for z in range(req.cd):
-            scale = 0.9
             nx = (req.x * req.cw) + x
             nz = (req.z * req.cd) + z
-            n = noise.pnoise3(nx / scale, nz / scale, req.seed + 3.012)
-            top = int(n * req.ch)
-            top = max(1, min(top, req.ch - 1))
+            elevation, block = biome.final_elevation(nx, nz, req.seed)
+            top = int(max(1, elevation * (req.ch - 1)))
             for y in range(top, 0, -1):
-                terrain[x][y][z] = random.choice((1, 2))
+                terrain[z][y][x] = block
 
     return terrain
 
@@ -70,7 +68,7 @@ def go_server(gen_func):
 
                 req = Req(*struct.unpack("7i", blob))
                 print(f"{self.client_address[1]}: {req}")
-                assert(req.version == VERSION)
+                assert (req.version == VERSION)
 
                 resp = gen_func(req)
 
@@ -79,7 +77,7 @@ def go_server(gen_func):
                 blob = struct.pack(fmt, *list(map(int, resp.flat)))
                 self.request.sendall(blob)
 
-    class Server(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    class Server(socketserver.ForkingMixIn, socketserver.TCPServer):
         allow_reuse_address = True
 
     with Server(("localhost", 17771), Handler) as server:
@@ -95,13 +93,10 @@ def mkreq(x, z, seed):
 
 def go_test(gen_func):
     def recv(i):
-        yield mkreq(0, -3, 10)
-        exit(2)
         for x in range(i):
-            for z in range(i):
-                yield mkreq(x, z, 10)
+            yield mkreq(x, 1, 10)
 
-    for req in recv(1):
+    for req in recv(4):
         resp = gen_func(req)
         write_img(req, resp)
 

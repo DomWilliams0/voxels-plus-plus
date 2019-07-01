@@ -1,5 +1,5 @@
 <terrain>
-	<generator>noise</generator>
+	<generator>python</generator>
 	<threads>0.75</threads>
-	<load_radius>5</load_radius>
+	<load_radius>7</load_radius>
 </terrain>

@@ -1,3 +1,4 @@
+#include <csignal>
 #include "game.h"
 #include "error.h"
 #include "util.h"
@@ -18,6 +19,8 @@ int Game::run() {
         LOG_F(ERROR, "failed to init SDL: %s", SDL_GetError());
         return kErrorSdl;
     }
+
+    signal(SIGPIPE, SIG_IGN);
 
     // window config
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);

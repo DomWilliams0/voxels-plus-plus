@@ -46,19 +46,30 @@ static size_t recv_all(int s, void *buf, size_t len) {
 
     while (total < len) {
         auto n = recv(s, (char *) buf + cur, CHUNK_SIZE, 0);
-        if (n < 0)
+        if (n <= 0)
             break;
 
         total += n;
+        cur += n;
     }
 
     return total;
 }
 
 int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrain_out) {
-    UNUSED(seed);
+    // next time you visit this you'll think goddamn what a mess and either you'll redo it or decide the
+    // python generator is not worth it and delete it
+
+    bool is_first_try;
+
+    is_first_try = true;
+    goto open_and_go;
+
+    try_again:
+    is_first_try = false;
 
     // open socket
+    open_and_go:
     int ret;
     if ((ret = get_socket()) != kErrorSuccess)
         return ret;
@@ -68,24 +79,29 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
         int32_t version, cw, ch, cd, x, z, seed;
     } req;
 
-    int kVersion = 1;
-    req.version = kVersion; // TODO proper version
+    const int kVersion = 1;
+    req.version = kVersion;
     req.cw = kChunkWidth;
     req.ch = kChunkHeight;
     req.cd = kChunkDepth;
     ChunkId_deconstruct(chunk_id, req.x, req.z);
-    req.seed = 10; // TODO add field to igenerator
+    req.seed = seed;
 
     int32_t buf[kBlocksPerChunk] = {0};
     size_t n_expected = kBlocksPerChunk * sizeof(int32_t);
-    size_t n;
-    n = send(sock_, &req, sizeof(req), 0);
-    DLOG_F(INFO, "sent %zu/%lu bytes", n, sizeof(req));
+    size_t n = send(sock_, &req, sizeof(req), 0);
 
-    // read resp
+    if (n != sizeof(req)) {
+        close(sock_);
+        sock_ = -1;
+        if (!is_first_try)
+            return 4; // uh oh
+
+        DLOG_F(WARNING, "socket have been closed, trying again");
+        goto try_again;
+    }
+
     n = recv_all(sock_, buf, n_expected);
-    LOG_F(INFO, "recvd %zu/%zu bytes", n, n_expected);
-
     if (n != n_expected) {
         return 5; // TODO error
     }
@@ -118,8 +134,6 @@ int PythonGenerator::get_socket() {
             LOG_F(ERROR, "could not connect to server: %d", errno);
             return kErrorIo;
         }
-
-        DLOG_F(INFO, "opened socket!!!!");
     }
 
     return kErrorSuccess;

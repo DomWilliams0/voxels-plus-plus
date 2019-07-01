@@ -10,10 +10,10 @@ ChunkNeighbour ChunkNeighbour::opposite() const {
             return kLeft;
         case kBack:
             return kFront;
-        default:
-            assert(false);
-            return kBack; // unreachable
     }
+
+    assert(false);
+    return kBack; // unreachable
 }
 
 ChunkTerrain::ChunkTerrain() : grid_(Block()) {}

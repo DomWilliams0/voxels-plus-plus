@@ -19,10 +19,10 @@ unsigned int BlockType::colour() const {
             return rgba(90, 83, 83);
         case kMarker:
             return rgba(230, 72, 46);
-        default:
-            assert(false);
-            return 0;
     }
+
+    assert(false);
+    return 0;
 }
 
 bool BlockType::opaque() const {

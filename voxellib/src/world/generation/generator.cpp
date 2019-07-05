@@ -1,7 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/un.h>
 #include <netdb.h>
 #include <cstdint>
 #include <cstring>
@@ -103,6 +102,7 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
 
     n = recv_all(sock_, buf, n_expected);
     if (n != n_expected) {
+        LOG_F(ERROR, "only got %zu/%zu bytes", n, n_expected);
         return 5; // TODO error
     }
 
@@ -117,14 +117,11 @@ int PythonGenerator::generate(ChunkId_t chunk_id, int seed, ChunkTerrain &terrai
 
 int PythonGenerator::get_socket() {
     if (sock_ == -1) {
-        const int port = 17771;
-
-        struct sockaddr_in server_address;
+        struct sockaddr_un server_address;
         memset(&server_address, 0, sizeof(server_address));
-        server_address.sin_family = AF_INET;
-        inet_pton(AF_INET, "localhost", &server_address.sin_addr);
-        server_address.sin_port = htons(port);
-        if ((sock_ = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+        server_address.sun_family = AF_UNIX;
+        strcpy(server_address.sun_path, "/tmp/voxels-gen");
+        if ((sock_ = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
             LOG_F(ERROR, "could not create socket: %d", errno);
             return kErrorIo;
         }

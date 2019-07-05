@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import collections
+import os
 import struct
 
 import numpy
@@ -67,7 +68,7 @@ def go_server(gen_func):
                     return
 
                 req = Req(*struct.unpack("7i", blob))
-                print(f"{self.client_address[1]}: {req}")
+                print(req)
                 assert (req.version == VERSION)
 
                 resp = gen_func(req)
@@ -77,10 +78,15 @@ def go_server(gen_func):
                 blob = struct.pack(fmt, *list(map(int, resp.flat)))
                 self.request.sendall(blob)
 
-    class Server(socketserver.ForkingMixIn, socketserver.TCPServer):
+    class Server(socketserver.ThreadingUnixStreamServer):
         allow_reuse_address = True
 
-    with Server(("localhost", 17771), Handler) as server:
+    path = "/tmp/voxels-gen"
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    with Server(path, Handler) as server:
         print("listening")
         server.serve_forever()
 

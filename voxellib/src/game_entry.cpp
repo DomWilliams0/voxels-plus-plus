@@ -16,7 +16,7 @@ int run_game() {
 
     // TODO dont create World directly, load from another class
     // e.g. from file, generate from seed, etc
-    World world({0, 40, 0}, {0, -1, 0});
+    World world({0, 70, 0}, {0, -1, 0});
 
 #ifdef NO_GFX
         Camera cam;
